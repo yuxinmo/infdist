@@ -1,15 +1,11 @@
-import math
-import time
-
-from builtin_interfaces.msg import Time
 import rclpy
 from rclpy.node import Node
 
-
 from mission_manager_msgs.msg import MissionCommand
 
-MISSION_TOPIC_NAME = 'mission'
+from .time_utils import get_current_time_msg
 
+MISSION_TOPIC_NAME = 'mission'
 
 MISSION_CMD_START = 'start'
 MISSION_CMD_END = 'end'
@@ -27,12 +23,6 @@ INTERACTIVE_COMMANDS_DESCRIPTIONS = {
 }
 
 
-def get_current_time():
-    modf = math.modf(time.time())
-    nanosec, sec = map(int, (modf[0]*10**9, modf[1]))
-    return Time(sec=sec, nanosec=nanosec)
-
-
 class MissionManager(Node):
 
     def __init__(self):
@@ -45,14 +35,14 @@ class MissionManager(Node):
     def start_mission(self):
         msg = MissionCommand()
         msg.command = MissionCommand.MISSION_START
-        msg.stamp = get_current_time()
+        msg.stamp = get_current_time_msg()
         self.publisher_.publish(msg)
         return msg.stamp
 
     def end_mission(self):
         msg = MissionCommand()
         msg.command = MissionCommand.MISSION_END
-        msg.stamp = get_current_time()
+        msg.stamp = get_current_time_msg()
         self.publisher_.publish(msg)
         return msg.stamp
 

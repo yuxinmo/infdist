@@ -5,18 +5,18 @@ import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 
-from .mission_manager import MissionClient, MissionExecutor, get_current_time
-from .mission_generator.models import Message, MessageSet
+from .mission_manager import (
+    MissionClient, MissionExecutor, get_current_time_msg
+)
+from .mission_generator.missions import generate_simple_3D_reconstruction
+from .time_utils import datetime_from_time_msg
 
 
 class MissionMessagePublisher(Node, MissionExecutor):
-    def __init__(self):
+    def __init__(self, messages):
         super().__init__('mission_message_publisher')
         self.publisher_ = self.create_publisher(Header, 'topic')
-        self.messages = MessageSet(20, [
-            Message(0, [1], 1, None),
-            Message(0, [1], 6, None),
-        ])
+        self.messages = messages
         self.current_message = 0
         self.timer = None
 
@@ -24,9 +24,17 @@ class MissionMessagePublisher(Node, MissionExecutor):
         return self.mission_start_time + timedelta(seconds=msg.t_sent)
 
     def publish_current_message(self):
-        msg = Header()
-        msg.stamp = get_current_time()
-        self.publisher_.publish(msg)
+
+        msg = self.messages.all()[self.current_message]
+        self.get_logger().info('Publish delay: {}'.format(
+            (
+                datetime.now() - self._message_real_sent_time(msg)
+            ).total_seconds()
+        ))
+
+        ros_msg = Header()
+        ros_msg.stamp = get_current_time_msg()
+        self.publisher_.publish(ros_msg)
         self.current_message += 1
 
     def timer_callback(self):
@@ -64,9 +72,7 @@ class MissionMessagePublisher(Node, MissionExecutor):
             timestamp.nanosec,
         ))
         self.current_message = 0
-        self.mission_start_time = datetime.fromtimestamp(
-            timestamp.sec + timestamp.nanosec * 1e-9
-        )
+        self.mission_start_time = datetime_from_time_msg(timestamp)
         self.set_timer()
 
     def end_mission(self, timestamp):
@@ -87,7 +93,9 @@ class MissionMessageSubscriber(Node, MissionExecutor):
         )
 
     def listener_callback(self, msg):
-        print('Got message {}'.format(msg))
+        delay = datetime.now() - datetime_from_time_msg(msg.stamp)
+        self.get_logger().info('Received message {}'.format(msg))
+        self.get_logger().info('  delay: {} s'.format(delay.total_seconds()))
 
     def start_mission(self, timestamp):
         self.get_logger().info('starting mission @ {}.{}'.format(
@@ -105,7 +113,11 @@ class MissionMessageSubscriber(Node, MissionExecutor):
 def main(args=None):
     rclpy.init(args=args)
 
-    mission_publisher = MissionMessagePublisher()
+    msgs = generate_simple_3D_reconstruction(20)
+
+    mission_publisher = MissionMessagePublisher(
+        msgs.filter(sender=1)
+    )
     mission_subscriber = MissionMessageSubscriber()
 
     mission_client = MissionClient()

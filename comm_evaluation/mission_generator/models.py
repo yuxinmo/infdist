@@ -74,12 +74,19 @@ class MessageSet:
             self._messages + other._messages
         )
 
-
-def __add__(self, other):
-    return MessageSet(
-        max(self.t_end, other.t_end),
-        self._messages + other._messages
-    )
+    def filter(self, **kwargs):
+        msgs = self.all()
+        if 'sender' in kwargs:
+            msgs = [
+                msg for msg in msgs
+                if msg.sender == kwargs['sender']
+            ]
+        if 'receiver' in kwargs:
+            msgs = [
+                msg for msg in msgs
+                if kwargs['receiver'] in msg.receivers
+            ]
+        return MessageSet(self.t_end, msgs)
 
 
 class Utility:

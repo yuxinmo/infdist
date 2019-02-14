@@ -1,6 +1,6 @@
 import numpy as np
 
-from models import MessageSet, Message
+from .models import MessageSet, Message
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
@@ -44,7 +44,7 @@ def generate_pos_messages(t_end, agents_num, t_start=0, f=5):
     )
 
 
-def generate_simlpe_3D_reconstruction(
+def generate_simple_3D_reconstruction(
     t_end,
 ):
     agents_num = 5
@@ -60,6 +60,6 @@ def generate_simlpe_3D_reconstruction(
 
 
 if __name__ == "__main__":
-    msgs = generate_simlpe_3D_reconstruction(22)
+    msgs = generate_simple_3D_reconstruction(22)
     print(msgs.__str__(
         ['sender', 'receivers', 't_sent', 'data', 'data_type']))
