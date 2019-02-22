@@ -1,6 +1,8 @@
 import numpy as np
 
-from .models import MessageSet, Message
+from .aggregations import AggregationMax
+from .models import MessageSet, Message, MessageType
+from .utilities import UtilityBattery, UtilityPosition
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
@@ -22,7 +24,7 @@ def generate_periodic_messages(
     ])
 
 
-def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
+def generate_batt_messages(t_end, agents_num, t_start=0, f=3,
                            level_start=1, level_end=0):
 
     def batt_level(t):
@@ -33,14 +35,22 @@ def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
             'batt_level': level,
         }
 
-    return generate_periodic_messages(
-        t_end, agents_num, BATTERY_DATA_TYPE, t_start, f, batt_level
+    return MessageType(
+        BATTERY_DATA_TYPE,
+        messages=generate_periodic_messages(
+            t_end, agents_num, BATTERY_DATA_TYPE, t_start, f, batt_level),
+        utility=UtilityBattery,
+        aggregation=AggregationMax,
     )
 
 
 def generate_pos_messages(t_end, agents_num, t_start=0, f=5):
-    return generate_periodic_messages(
-        t_end, agents_num, POSITION_DATA_TYPE, t_start, f
+    return MessageType(
+        POSITION_DATA_TYPE,
+        messages=generate_periodic_messages(
+            t_end, agents_num, POSITION_DATA_TYPE, t_start, f),
+        utility=UtilityPosition,
+        aggregation=AggregationMax,
     )
 
 
@@ -49,17 +59,25 @@ def generate_simple_3D_reconstruction(
 ):
     agents_num = 5
 
-    batt_msgs = generate_batt_messages(t_end, agents_num)
-    pos_msgs = generate_pos_messages(t_end, agents_num)
+    data_types = [
+        generate_batt_messages(t_end, agents_num),
+        # generate_pos_messages(t_end, agents_num),
+        # generate_status_messages(t_end),
+        # generate_objective_messages(t_end),
+        # generate_map_messages(t_end),
+    ]
 
-    # status_msgs = generate_status_messages(t_end)
-    # objective_msgs = generate_objective_messages(t_end)
-    # map_msgs = generate_map_messages(t_end)
+    type_by_name = {
+        _type.name: _type
+        for _type in data_types
+    }
+    messages = sum([_type.messages for _type in data_types], MessageSet(0, []))
 
-    return batt_msgs + pos_msgs
+    return messages, type_by_name
 
 
 if __name__ == "__main__":
     msgs = generate_simple_3D_reconstruction(22)
     print(msgs.__str__(
-        ['sender', 'receivers', 't_sent', 'data', 'data_type']))
+        ['sender', 'receivers', 'planned_t_sent', 't_sent', 'data',
+         'data_type']))

@@ -1,9 +1,11 @@
+import math
+import time
+
+from builtin_interfaces.msg import Time
 import rclpy
 from rclpy.node import Node
 
 from mission_manager_msgs.msg import MissionCommand
-
-from .time_utils import get_current_time_msg
 
 MISSION_TOPIC_NAME = 'mission'
 
@@ -21,6 +23,12 @@ INTERACTIVE_COMMANDS_DESCRIPTIONS = {
     USER_CMD_HELP: 'display a list of allowed commands',
     USER_CMD_CLOSE: 'close the interactive mode',
 }
+
+
+def get_current_time_msg():
+    modf = math.modf(time.time())
+    nanosec, sec = map(int, (modf[0]*10**9, modf[1]))
+    return Time(sec=sec, nanosec=nanosec)
 
 
 class MissionManager(Node):

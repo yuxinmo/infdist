@@ -1,8 +1,10 @@
 class Message:
-    def __init__(self, sender, receivers, t_sent, data_type, data=None,
-                 t_rcv=None):
+    def __init__(self, sender, receivers, planned_t_sent,
+                 data_type, data=None,
+                 t_sent=None, t_rcv=None):
         self.sender = sender
         self.receivers = receivers
+        self.planned_t_sent = planned_t_sent
         self.t_sent = t_sent
         self.t_rcv = t_rcv
         self.data_type = data_type
@@ -10,26 +12,48 @@ class Message:
 
     def __repr__(self):
         return (
-            'Message<sender={}, receivers={}, t_sent={}, t_rcv={}>'.format(
+            'Message<sender={}, receivers={},'
+            't_sent={}, t_rcv={}, data_type={}>'.format(
                 self.sender,
                 self.receivers,
                 self.t_sent,
                 self.t_rcv,
+                self.data_type,
             )
         )
 
 
 class MessageSet:
-    def __init__(self, t_end, messages):
+    def __init__(self, t_end, messages, t_start=None):
         self.t_end = t_end
+        self.t_start = t_start
         self._messages = messages
         self._sort()
+
+    def convert_to_relative_time(self):
+        def relative_time(t):
+            return (t-self.t_start).total_seconds()
+        for msg in self._messages:
+            msg.t_sent = relative_time(msg.t_sent)
+            msg.t_rcv = relative_time(msg.t_rcv)
+        self.t_end = relative_time(self.t_end)
+        self.t_start = relative_time(self.t_start)
 
     def all(self):
         return self._messages
 
     def _sort(self):
-        self._messages.sort(key=lambda m: m.t_sent)
+        if not self._messages:
+            return
+
+        if self._messages[0].t_sent is None:
+            def key(m):
+                return m.planned_t_sent
+        else:
+            def key(m):
+                return m.t_sent
+
+        self._messages.sort(key=key)
 
     def sent_before(self, t):
         msgs = self.all()
@@ -86,35 +110,21 @@ class MessageSet:
                 msg for msg in msgs
                 if kwargs['receiver'] in msg.receivers
             ]
+        if 'data_type' in kwargs:
+            msgs = [
+                msg for msg in msgs
+                if kwargs['data_type'] == msg.data_type
+            ]
         return MessageSet(self.t_end, msgs)
 
-
-class Utility:
-    @staticmethod
-    def func(m, t, s):
-        raise NotImplementedError()
-
-    @staticmethod
-    def integrate(m, t_start, t_end, states=None):
-        raise NotImplementedError()
-
-    def __call__(self, m, t, s):
-        return self.func(m, t, s)
+    def append(self, message):
+        self._messages.append(message)
+        self._sort()
 
 
-class Aggregation:
-    def __init__(self, utility_func, messages):
-        self.utility_func = utility_func
+class MessageType:
+    def __init__(self, name, messages, utility, aggregation):
+        self.name = name
         self.messages = messages
-
-    def func(self, t, s={}):
-        raise NotImplementedError()
-
-    def evaluate(self, ts, states=None):
-        if states is None:
-            return [self.func(t) for t in ts]
-        else:
-            return [self.func(t, s) for t, s in zip(ts, states)]
-
-    def integrate(self, states=None):
-        raise NotImplementedError()
+        self.utility = utility
+        self.aggregation = aggregation
