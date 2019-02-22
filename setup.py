@@ -31,7 +31,6 @@ setup(
     entry_points={
         'console_scripts': [
             'comm_evaluation = comm_evaluation.main:main',
-            'mission_manager = comm_evaluation.mission_manager:main',
         ],
     },
 )

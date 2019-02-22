@@ -6,14 +6,19 @@ import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 
-from .mission_manager import (
+from mission_manager.client import (
     MissionClient, MissionExecutor
 )
 from .mission_generator.missions import generate_simple_3D_reconstruction
 from .mission_generator.models import MessageSet
-from .time_utils import datetime_from_time_msg
 from .message_converter import msg_to_ros_msg, ros_msg_to_msg
 from comm_evaluation_msgs.msg import EvaluationHeader
+
+
+def datetime_from_time_msg(time):
+    return datetime.fromtimestamp(
+        time.sec + time.nanosec * 1e-9
+    )
 
 
 class MissionMessagePublisher(Node, MissionExecutor):
