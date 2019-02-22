@@ -15,12 +15,6 @@ from .message_converter import msg_to_ros_msg, ros_msg_to_msg
 from comm_evaluation_msgs.msg import EvaluationHeader
 
 
-def datetime_from_time_msg(time):
-    return datetime.fromtimestamp(
-        time.sec + time.nanosec * 1e-9
-    )
-
-
 class MissionMessagePublisher(Node, MissionExecutor):
     def __init__(self, messages):
         super().__init__('mission_message_publisher')
@@ -84,22 +78,16 @@ class MissionMessagePublisher(Node, MissionExecutor):
         )
 
     def start_mission(self, timestamp):
-        self.get_logger().info('starting mission @ {}.{}'.format(
-            timestamp.sec,
-            timestamp.nanosec,
-        ))
+        self.get_logger().info('starting mission @ {}'.format(timestamp))
         self.current_message = 0
-        self.mission_start_time = datetime_from_time_msg(timestamp)
+        self.mission_start_time = timestamp
         if self.messages.all():
             self.set_timer()
         else:
             self.get_logger().warn('empty messages set')
 
     def end_mission(self, timestamp):
-        self.get_logger().info('ending mission @ {}.{}'.format(
-            timestamp.sec,
-            timestamp.nanosec,
-        ))
+        self.get_logger().info('ending mission @ {}'.format(timestamp))
         self.destroy_timer(self.timer)
 
 
@@ -124,19 +112,13 @@ class MissionMessageEvaluator(Node, MissionExecutor):
         self.messages.append(msg)
 
     def start_mission(self, timestamp):
-        self.get_logger().info('starting mission @ {}.{}'.format(
-            timestamp.sec,
-            timestamp.nanosec,
-        ))
-        self.mission_start = datetime_from_time_msg(timestamp)
+        self.get_logger().info('starting mission @ {}'.format(timestamp))
+        self.mission_start = timestamp
         self.messages = MessageSet(1, [], t_start=self.mission_start)
 
     def end_mission(self, timestamp):
-        self.get_logger().info('ending mission @ {}.{}'.format(
-            timestamp.sec,
-            timestamp.nanosec,
-        ))
-        self.messages.t_end = datetime_from_time_msg(timestamp)
+        self.get_logger().info('ending mission @ {}'.format(timestamp))
+        self.messages.t_end = timestamp
         self.log_mission_summary()
         pickle.dump(
             self.messages,
