@@ -101,8 +101,15 @@ class MissionMessageEvaluator(Node, MissionExecutor):
             'topic',
             self.listener_callback
         )
+        self.mission_start = None
 
     def listener_callback(self, ros_msg):
+        if self.mission_start is None:
+            self.get_logger().warn(
+                'Received a message before mission start, ignoring.'
+            )
+            return
+
         msg = ros_msg_to_msg(ros_msg)
         msg.t_rcv = datetime.now()
 
