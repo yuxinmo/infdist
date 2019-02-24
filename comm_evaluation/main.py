@@ -11,14 +11,21 @@ from mission_manager.client import (
 )
 from .mission_generator.missions import generate_simple_3D_reconstruction
 from .mission_generator.models import MessageSet
-from .message_converter import msg_to_ros_msg, ros_msg_to_msg
-from comm_evaluation_msgs.msg import EvaluationHeader
+from .message_converter import (
+    msg_to_ros_msg,
+    ros_msg_to_msg,
+    ros_topic_types,
+)
 
 
 class MissionMessagePublisher(Node, MissionExecutor):
     def __init__(self, messages):
         super().__init__('mission_message_publisher')
-        self.publisher_ = self.create_publisher(EvaluationHeader, 'topic')
+        self.publishers = {
+            topic_name: self.create_publisher(topic_type, topic_name)
+            for topic_name, topic_type in ros_topic_types.items()
+        }
+
         self.messages = messages
         self.current_message = 0
         self.timer = None
@@ -43,9 +50,9 @@ class MissionMessagePublisher(Node, MissionExecutor):
 
         msg.t_sent = datetime.now()
 
-        ros_msg = msg_to_ros_msg(msg)
+        ros_msg, ros_topic_name = msg_to_ros_msg(msg)
 
-        self.publisher_.publish(ros_msg)
+        self.publishers[ros_topic_name].publish(ros_msg)
         self.current_message += 1
 
     def timer_callback(self):
@@ -96,27 +103,32 @@ class MissionMessageEvaluator(Node, MissionExecutor):
         super().__init__('mission_message_evaluator')
         self.receiver_ident = receiver_ident
         self.message_types = message_types
-        self.subscription = self.create_subscription(
-            EvaluationHeader,
-            'topic',
-            self.listener_callback
-        )
+
+        for topic_name, topic_type in ros_topic_types.items():
+            self.create_subscription(
+                topic_type, topic_name,
+                self.get_subscription_callback(
+                    topic_name
+                )
+            )
         self.mission_start = None
 
-    def listener_callback(self, ros_msg):
-        if self.mission_start is None:
-            self.get_logger().warn(
-                'Received a message before mission start, ignoring.'
-            )
-            return
+    def get_subscription_callback(self, topic_name):
+        def _listener_callback(ros_msg):
+            if self.mission_start is None:
+                self.get_logger().warn(
+                    'Received a message before mission start, ignoring.'
+                )
+                return
 
-        msg = ros_msg_to_msg(ros_msg)
-        msg.t_rcv = datetime.now()
+            msg = ros_msg_to_msg(ros_msg, topic_name)
+            msg.t_rcv = datetime.now()
 
-        if self.receiver_ident not in msg.receivers:
-            return
+            if self.receiver_ident not in msg.receivers:
+                return
 
-        self.messages.append(msg)
+            self.messages.append(msg)
+        return _listener_callback
 
     def start_mission(self, timestamp):
         self.get_logger().info('starting mission @ {}'.format(timestamp))

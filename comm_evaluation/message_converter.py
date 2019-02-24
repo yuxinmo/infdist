@@ -7,22 +7,35 @@ from comm_evaluation_msgs.msg import EvaluationHeader
 from .mission_generator.models import Message
 
 
-# TODO implement this function
-# and change it to ros_topic_to_data_type
-def ros_type_to_type(ros_type):
-    return 'batt'
+ros_topic_types = {
+    'topic': EvaluationHeader,
+}
+
+msg_type_to_ros_topic = {
+    'batt': 'topic',
+}
+
+ros_topic_to_msg_type = {
+    ros_topic: msg_type
+    for msg_type, ros_topic in msg_type_to_ros_topic.items()
+}
+
+
+def ros_topic_to_type(ros_topic):
+    return ros_topic_to_msg_type[ros_topic]
 
 
 def type_to_ros_type(msg_type):
-    return EvaluationHeader
+    topic = msg_type_to_ros_topic[msg_type]
+    return ros_topic_types[topic], topic
 
 
-def ros_msg_to_msg(ros_msg):
+def ros_msg_to_msg(ros_msg, ros_topic):
     msg = Message(
         ros_msg.sender_id,
         ros_msg.receivers,
         None,
-        ros_type_to_type(type(ros_msg)),
+        ros_topic_to_type(ros_topic),
         t_sent=datetime.fromtimestamp(
             ros_msg.stamp.sec + ros_msg.stamp.nanosec * 1e-9
         ),
@@ -32,11 +45,13 @@ def ros_msg_to_msg(ros_msg):
 
 
 def msg_to_ros_msg(msg):
-    ros_msg = type_to_ros_type(msg.data_type)()
+    ros_msg_class, ros_topic = type_to_ros_type(msg.data_type)
+
+    ros_msg = ros_msg_class()
     ros_msg.sender_id = msg.sender
     ros_msg.receivers = msg.receivers
     ros_msg.stamp = _datetime_to_ros_time(msg.t_sent)
-    return ros_msg
+    return ros_msg, ros_topic
 
 
 def _datetime_to_ros_time(datetime):
