@@ -1,10 +1,18 @@
+import argparse
 from datetime import datetime, timedelta
+import json
+import os
 import pickle
-import sys
 
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 
 from mission_manager.client import (
     MissionClient, MissionExecutor
@@ -19,10 +27,11 @@ from .message_converter import (
 
 
 class MissionMessagePublisher(Node, MissionExecutor):
-    def __init__(self, messages):
+    def __init__(self, messages, qos_profile=None):
         super().__init__('mission_message_publisher')
         self.publishers = {
-            topic_name: self.create_publisher(topic_type, topic_name)
+            topic_name: self.create_publisher(topic_type, topic_name,
+                                              qos_profile=qos_profile)
             for topic_name, topic_type in ros_topic_types.items()
         }
 
@@ -99,17 +108,20 @@ class MissionMessagePublisher(Node, MissionExecutor):
 
 
 class MissionMessageEvaluator(Node, MissionExecutor):
-    def __init__(self, receiver_ident, message_types):
+    def __init__(self, receiver_ident, experiment_configuration, message_types,
+                 qos_profile=None, results_file_prefix=None):
         super().__init__('mission_message_evaluator')
         self.receiver_ident = receiver_ident
         self.message_types = message_types
+        self.results_file_prefix = results_file_prefix
 
         for topic_name, topic_type in ros_topic_types.items():
             self.create_subscription(
                 topic_type, topic_name,
                 self.get_subscription_callback(
                     topic_name
-                )
+                ),
+                qos_profile=qos_profile,
             )
         self.mission_start = None
 
@@ -138,34 +150,49 @@ class MissionMessageEvaluator(Node, MissionExecutor):
     def end_mission(self, timestamp):
         self.get_logger().info('ending mission @ {}'.format(timestamp))
         self.messages.t_end = timestamp
-        self.log_mission_summary()
+        self.print_mission_summary()
+        if self.results_file_prefix is not None:
+            self.save_results_to_file(self.results_file_prefix)
+
+    def save_results_to_file(self, filename_prefix):
+        os.makedirs(os.path.dirname(filename_prefix), exist_ok=True)
         pickle.dump(
             self.messages,
-            open('logs/d{}.pickle'.format(self.receiver_ident), 'wb')
+            open(filename_prefix + '.pickle', 'wb')
+        )
+        self.get_logger().info('Saving results to file {}'.format(
+            filename_prefix + '.pickle'
+        ))
+        json.dump(
+            self.aggregate_types(),
+            open(filename_prefix + '.agg.json', 'w')
         )
 
     def aggregate_types(self):
         result = {}
         for type_name, message_type in self.message_types.items():
             msgs = self.messages.filter(data_type=type_name)
-            self.get_logger().info('all msgs of type {}: {}'.format(
-                type_name, msgs))
 
             agg = message_type.aggregation(message_type.utility(), msgs)
             result[type_name] = agg.integrate()
         return result
 
-    def log_mission_summary(self):
+    def print_mission_summary(self):
         M = len(self.messages.all())
         text = ''
 
-        for msg in self.messages.all():
-            text += '\t{}\n'.format(repr(msg))
+        # for msg in self.messages.all():
+        #     text += '\t{}\n'.format(repr(msg))
 
         delays = [msg.t_rcv - msg.t_sent for msg in self.messages.all()]
-        delay_mean = sum(delays, timedelta()) / M
-        delay_variance = sum([(delay-delay_mean).total_seconds()**2
-                              for delay in delays]) / M
+
+        if M == 0:
+            delay_mean = 0
+            delay_variance = 0
+        else:
+            delay_mean = sum(delays, timedelta()) / M
+            delay_variance = sum([(delay-delay_mean).total_seconds()**2
+                                  for delay in delays]) / M
 
         text += ' ====== \n'
         text += 'Mission start: {} Mission end: {}\n'.format(
@@ -181,22 +208,88 @@ class MissionMessageEvaluator(Node, MissionExecutor):
         self.get_logger().info(text)
 
 
-def main(args=None):
-    if len(sys.argv) > 1:
-        ident = int(sys.argv[1])
+RELIABILITY_BY_ARG = {
+    'reliable': QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    'best_effort': QoSReliabilityPolicy.RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT,
+}
+
+DURABILITY_BY_ARG = {
+    'transient_local':
+        QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL,
+    'volatile': QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_VOLATILE,
+}
+
+
+def history_by_arg(arg):
+    if arg == 0:
+        return QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_ALL
     else:
-        ident = 1
+        return QoSHistoryPolicy.RMW_QOS_POLICY_HISTORY_KEEP_LAST
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser(
+        description='Run message publisher and communication evaluator.')
+    parser.add_argument('node_id', type=int, help='node id')
+
+    parser.add_argument(
+        '--history', default=10, type=int,
+        help='a value for the history QoS parameter, 0 equals to KEEP_ALL'
+    )
+    parser.add_argument(
+        '--reliability', default='reliable', type=str,
+        choices=RELIABILITY_BY_ARG.keys(),
+        help='a value for the reliability QoS parameter'
+    )
+    parser.add_argument(
+        '--durability', default='volatile', type=str,
+        choices=DURABILITY_BY_ARG.keys(),
+        help='a value for the durability QoS parameter'
+    )
+    parser.add_argument(
+        '--length', default=100, type=int,
+        help='length of a generated mission'
+    )
+    parser.add_argument(
+        '--results_file_prefix', default=None, type=str,
+        help=(
+            'a path to a file where the results should be saved, '
+            'a dot and extension will be attached to this value '
+            '(e.g. ".pickle")'
+        )
+    )
+
+    parsed_args = parser.parse_args()
+
+    experiment_configuration = {
+        'qos': {
+            'history': parsed_args.history,
+            'reliability': parsed_args.reliability,
+            'durability': parsed_args.durability,
+        }
+    }
+
+    qos_profile = QoSProfile(
+        reliability=RELIABILITY_BY_ARG[parsed_args.reliability],
+        history=history_by_arg(parsed_args.history),
+        depth=parsed_args.history,
+        durability=DURABILITY_BY_ARG[parsed_args.durability]
+    )
 
     rclpy.init(args=args)
 
-    msgs, message_types = generate_simple_3D_reconstruction(5)
+    msgs, message_types = generate_simple_3D_reconstruction(parsed_args.length)
 
     mission_publisher = MissionMessagePublisher(
-        msgs.filter(sender=ident)
+        msgs.filter(sender=parsed_args.node_id),
+        qos_profile=qos_profile
     )
     mission_subscriber = MissionMessageEvaluator(
-        ident,
-        message_types
+        parsed_args.node_id,
+        experiment_configuration,
+        message_types,
+        qos_profile=qos_profile,
+        results_file_prefix=parsed_args.results_file_prefix
     )
 
     mission_client = MissionClient()
@@ -209,7 +302,12 @@ def main(args=None):
     executor.add_node(mission_client)
 
     mission_publisher.get_logger().info(
-        'Node #{} initialized, waiting for a mission start.'.format(ident)
+        'Node #{} initialized, waiting for a mission start.'.format(
+            parsed_args.node_id
+        )
+    )
+    mission_publisher.get_logger().info(
+        'Experiment configuration: {}'.format(str(experiment_configuration))
     )
 
     executor.spin()

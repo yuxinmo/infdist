@@ -15,7 +15,7 @@ class Utility:
 
 class UtilityBattery(Utility):
     def __init__(self):
-        self.MAX_BATT_DEPLETION_RATE = 1
+        self.MAX_BATT_DEPLETION_RATE = 0.05
 
     def func(self, m, t, s):
         length = (t-m.t_sent)

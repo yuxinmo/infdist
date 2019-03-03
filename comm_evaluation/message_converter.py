@@ -8,11 +8,13 @@ from .mission_generator.models import Message
 
 
 ros_topic_types = {
-    'topic': EvaluationHeader,
+    'battery': EvaluationHeader,
+    'position': EvaluationHeader,
 }
 
 msg_type_to_ros_topic = {
-    'batt': 'topic',
+    'batt': 'battery',
+    'position': 'position',
 }
 
 ros_topic_to_msg_type = {

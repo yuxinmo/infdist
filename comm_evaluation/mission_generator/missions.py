@@ -24,7 +24,7 @@ def generate_periodic_messages(
     ])
 
 
-def generate_batt_messages(t_end, agents_num, t_start=0, f=3,
+def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
                            level_start=1, level_end=0):
 
     def batt_level(t):
@@ -57,7 +57,7 @@ def generate_pos_messages(t_end, agents_num, t_start=0, f=5):
 def generate_simple_3D_reconstruction(
     t_end,
 ):
-    agents_num = 5
+    agents_num = 2
 
     data_types = [
         generate_batt_messages(t_end, agents_num),
