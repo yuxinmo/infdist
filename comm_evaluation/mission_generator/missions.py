@@ -60,7 +60,7 @@ def generate_simple_3D_reconstruction(
     agents_num = 2
 
     data_types = [
-        generate_batt_messages(t_end, agents_num),
+        generate_batt_messages(t_end, agents_num, level_end=0.88),
         # generate_pos_messages(t_end, agents_num),
         # generate_status_messages(t_end),
         # generate_objective_messages(t_end),
