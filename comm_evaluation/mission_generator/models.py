@@ -121,6 +121,12 @@ class MessageSet:
         self._messages.append(message)
         self._sort()
 
+    def senders(self):
+        return set([
+            m.sender
+            for m in self.all()
+        ])
+
 
 class MessageType:
     def __init__(self, name, messages, utility, aggregation):

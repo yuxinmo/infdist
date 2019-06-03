@@ -170,12 +170,17 @@ class MissionMessageEvaluator(Node, MissionExecutor):
 
     def aggregate_types(self):
         result = {}
-        for type_name, message_type in self.message_types.items():
-            msgs = self.messages.filter(data_type=type_name)
+        for sender in sorted(self.messages.senders()):
+            result[sender] = {}
+            for type_name, message_type in self.message_types.items():
+                msgs = self.messages.filter(
+                    data_type=type_name,
+                    sender=sender,
+                )
 
-            agg = message_type.aggregation(message_type.utility(), msgs)
-            result[type_name] = agg.integrate()
-        return result
+                agg = message_type.aggregation(message_type.utility(), msgs)
+                result[sender][type_name] = agg.integrate()
+            return result
 
     def print_mission_summary(self):
         M = len(self.messages.all())
@@ -251,6 +256,10 @@ def main(args=None):
         help='length of a generated mission'
     )
     parser.add_argument(
+        '--agents_num', default=2, type=int,
+        help='number of agents taking part in the mission'
+    )
+    parser.add_argument(
         '--results_file_prefix', default=None, type=str,
         help=(
             'a path to a file where the results should be saved, '
@@ -278,7 +287,10 @@ def main(args=None):
 
     rclpy.init(args=args)
 
-    msgs, message_types = generate_simple_3D_reconstruction(parsed_args.length)
+    msgs, message_types = generate_simple_3D_reconstruction(
+        parsed_args.length,
+        parsed_args.agents_num,
+    )
 
     mission_publisher = MissionMessagePublisher(
         msgs.filter(sender=parsed_args.node_id),

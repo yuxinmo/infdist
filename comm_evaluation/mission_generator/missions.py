@@ -55,10 +55,8 @@ def generate_pos_messages(t_end, agents_num, t_start=0, f=5):
 
 
 def generate_simple_3D_reconstruction(
-    t_end,
+    t_end, agents_num=2,
 ):
-    agents_num = 2
-
     data_types = [
         generate_batt_messages(t_end, agents_num, level_end=0.88),
         # generate_pos_messages(t_end, agents_num),
