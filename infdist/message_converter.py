@@ -3,7 +3,7 @@ import math
 
 from builtin_interfaces.msg import Time
 
-from comm_evaluation_msgs.msg import EvaluationHeader
+from infdist_msgs.msg import EvaluationHeader
 from .mission_generator.models import Message
 
 

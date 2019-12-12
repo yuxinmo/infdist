@@ -1,7 +1,7 @@
 from setuptools import find_packages
 from setuptools import setup
 
-package_name = 'comm_evaluation'
+package_name = 'infdist'
 
 setup(
     name=package_name,
@@ -30,7 +30,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'comm_evaluation = comm_evaluation.main:main',
+            'infdist = infdist.main:main',
         ],
     },
 )
