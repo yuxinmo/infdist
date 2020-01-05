@@ -57,38 +57,6 @@ def adapt_bruteforce(messages, context, available_throughput, timeslot_length):
     return best_set
 
 
-def adapt_window(
-    window,
-    following_messages,
-    context,
-    available_throughput,
-    timeslot_length
-):
-
-    all_subsets = list(powerset(window.all()))
-    all_subsets = [
-        MessageSet(messages.t_end, list(msgs)) + following_messages
-        for msgs in all_subsets
-    ]
-    all_subsets = [
-        msgs
-        for msgs in all_subsets
-        if throughput_check(msgs, available_throughput, timeslot_length)
-    ]
-
-    print("Considered subsets:")
-    for s in all_subsets:
-        print('\t', s)
-        print("\tUtility:", context.utility(s))
-        print('\t,')
-
-    best_set = max(
-        all_subsets,
-        key=lambda msgs: context.utility(msgs)
-    )
-    return best_set
-
-
 def adapt_dynamic(messages, context, available_throughput, timeslot_length):
     possible_results = [
         MessageSet(messages.t_end, [], messages.t_end)
