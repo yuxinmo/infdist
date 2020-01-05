@@ -1,24 +1,24 @@
 class Message:
     def __init__(self, sender, receivers, planned_t_sent,
-                 data_type, data=None,
+                 data_type_name, data=None,
                  t_sent=None, t_rcv=None):
         self.sender = sender
         self.receivers = receivers
         self.planned_t_sent = planned_t_sent
         self.t_sent = t_sent
         self.t_rcv = t_rcv
-        self.data_type = data_type
+        self.data_type_name = data_type_name
         self.data = data
 
     def __repr__(self):
         return (
             'Message<sender={}, receivers={},'
-            't_sent={}, t_rcv={}, data_type={}>'.format(
+            't_sent={}, t_rcv={}, data_type_name={}>'.format(
                 self.sender,
                 self.receivers,
                 self.t_sent,
                 self.t_rcv,
-                self.data_type,
+                self.data_type_name,
             )
         )
 
@@ -56,6 +56,7 @@ class MessageSet:
         self._messages.sort(key=key)
 
     def sent_before(self, t):
+        """ Implemented using binary search """
         msgs = self.all()
         lft = 0
         r = len(msgs)
@@ -95,7 +96,8 @@ class MessageSet:
     def __add__(self, other):
         return MessageSet(
             max(self.t_end, other.t_end),
-            self._messages + other._messages
+            self._messages + other._messages,
+            min(self.t_start, other.t_start),
         )
 
     def filter(self, **kwargs):
@@ -113,7 +115,7 @@ class MessageSet:
         if 'data_type' in kwargs:
             msgs = [
                 msg for msg in msgs
-                if kwargs['data_type'] == msg.data_type
+                if kwargs['data_type'] == msg.data_type_name
             ]
         return MessageSet(self.t_end, msgs)
 
@@ -128,9 +130,44 @@ class MessageSet:
         ])
 
 
-class MessageType:
-    def __init__(self, name, messages, utility, aggregation):
-        self.name = name
-        self.messages = messages
-        self.utility = utility
-        self.aggregation = aggregation
+class InformationType:
+    def __init__(self, data_type_name, utility_cls, aggregation_cls):
+        self.data_type_name = data_type_name
+        self.utility_cls = utility_cls
+        self.aggregation_cls = aggregation_cls
+
+    def __repr__(self):
+        return "<InformationType({})>".format(self.data_type_name)
+
+
+class MissionContext:
+    def __init__(self, message_types):
+        self.message_types = message_types
+
+    def utility_type(self, messages, msg_type):
+        aggregation = msg_type.aggregation_cls(
+            msg_type.utility_cls(),
+            messages.filter(data_type_name=msg_type.data_type_name)
+        )
+        return aggregation.integrate()
+
+    def utility_by_type(self, messages):
+        return {
+            msg_type: self.utility_type(messages, msg_type)
+            for msg_type in self.message_types
+        }
+
+    def utility_by_sender(self, messages, sender):
+        return self.utility_by_type(messages.filter(sender=sender))
+
+    def utility_dict(self, messages):
+        return {
+            sender: self.utility_by_sender(messages, sender)
+            for sender in messages.senders()
+        }
+
+    def utility(self, messages):
+        return sum([
+            sum(by_type.values())
+            for by_type in self.utility_dict(messages).values()
+        ])
