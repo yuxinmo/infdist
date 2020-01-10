@@ -70,7 +70,7 @@ def adapt_dynamic(messages, context, available_throughput, timeslot_length):
             possible_results = [
                 possible_results[i+1]
                 if (
-                    throughput_check(
+                    throughput_check(  # TODO: probably not needed
                         possible_results[i+1],
                         available_throughput,
                         timeslot_length

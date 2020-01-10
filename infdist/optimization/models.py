@@ -171,3 +171,8 @@ class MissionContext:
             sum(by_type.values())
             for by_type in self.utility_dict(messages).values()
         ])
+
+    def __add__(self, other):
+        return MissionContext(
+            self.message_types.union(other.message_types)
+        )

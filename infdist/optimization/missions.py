@@ -9,22 +9,25 @@ POSITION_DATA_TYPE = 'position'
 
 
 def generate_periodic_messages(
-    t_end, agents_num, data_type_name, t_start=0, f=1, data_f=lambda t: {}
+    t_end, senders, receivers, data_type_name,
+    t_start=0, f=1, data_f=lambda t: {}
 ):
+    if receivers is None:
+        receivers = senders
     return MessageSet(t_end, [
         Message(
             agent_id,
-            set(range(agents_num)) - set([agent_id]),
+            set(receivers) - set([agent_id]),
             t,
             data_type_name,
             data_f(t)
         )
-        for agent_id in range(agents_num)
+        for agent_id in senders
         for t in np.arange(t_start, t_end, 1/f)
-    ])
+    ], t_start)
 
 
-def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
+def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                            level_start=1, level_end=0):
 
     def batt_level(t):
@@ -37,7 +40,8 @@ def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
 
     return (
         generate_periodic_messages(
-            t_end, agents_num, BATTERY_DATA_TYPE, t_start, f, batt_level
+            t_end, senders, receivers,
+            BATTERY_DATA_TYPE, t_start, f, batt_level
         ),
         MissionContext(
             set([
@@ -51,10 +55,10 @@ def generate_batt_messages(t_end, agents_num, t_start=0, f=1,
     )
 
 
-def generate_pos_messages(t_end, agents_num, t_start=0, f=5):
+def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5):
     return (
         generate_periodic_messages(
-            t_end, agents_num, POSITION_DATA_TYPE, t_start, f
+            t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f
         ),
         MissionContext(set([
             InformationType(
@@ -74,14 +78,14 @@ def simulate_sending_messages_with_latency(msgs, latency):
 
 
 def generate_simple_3D_reconstruction(
-    t_end, agents_num=2,
+    t_end, senders={0, 1}, receivers=None,
 ):
     return (
-        generate_batt_messages(t_end, agents_num, level_end=0.88)
-        # + generate_pos_messages(t_end, agents_num)
-        # + generate_status_messages(t_end)
-        # + generate_objective_messages(t_end)
-        # + generate_map_messages(t_end)
+        generate_batt_messages(t_end, senders, receivers, level_end=0.88)
+        # + generate_pos_messages(t_end, senders, receivers)
+        # + generate_status_messages(t_end, senders, receivers)
+        # + generate_objective_messages(t_end, senders, receivers)
+        # + generate_map_messages(t_end, senders, receivers)
     )
 
 
