@@ -1,10 +1,10 @@
 class Message:
-    def __init__(self, sender, receivers, planned_t_sent,
+    def __init__(self, sender, receivers, t_gen,
                  data_type_name, data=None,
                  t_sent=None, t_rcv=None):
         self.sender = sender
         self.receivers = receivers
-        self.planned_t_sent = planned_t_sent
+        self.t_gen = t_gen
         self.t_sent = t_sent
         self.t_rcv = t_rcv
         self.data_type_name = data_type_name
@@ -24,7 +24,9 @@ class Message:
 
 
 class MessageSet:
-    def __init__(self, t_end, messages, t_start=None):
+    def __init__(self, t_end, messages=None, t_start=None):
+        if messages is None:
+            messages = []
         self.t_end = t_end
         self.t_start = t_start
         self._messages = messages
@@ -48,7 +50,7 @@ class MessageSet:
 
         if self._messages[0].t_sent is None:
             def key(m):
-                return m.planned_t_sent
+                return m.t_gen
         else:
             def key(m):
                 return m.t_sent
@@ -56,6 +58,12 @@ class MessageSet:
         self._messages.sort(key=key)
 
     def sent_before(self, t):
+        return self.all()[0:self.supremum_idx(t)]
+
+    def received_after(self, t):
+        return self.all()[self.supremum_idx(t, 't_rcv'):]
+
+    def supremum_idx(self, t, attribute_name='t_sent'):
         """ Implemented using binary search """
         msgs = self.all()
         lft = 0
@@ -63,12 +71,12 @@ class MessageSet:
 
         while lft != r:
             i = (lft + r) // 2
-            if msgs[i].t_sent < t:
+            if getattr(msgs[i], attribute_name) < t:
                 lft = i+1
             else:
                 r = i
 
-        return self.all()[0:r]
+        return r
 
     def __repr__(self):
         return (
@@ -92,6 +100,9 @@ class MessageSet:
             )
             for m in self.all()
         ])
+
+    def __len__(self):
+        return len(self._messages)
 
     def __add__(self, other):
         return MessageSet(
@@ -117,6 +128,8 @@ class MessageSet:
                 msg for msg in msgs
                 if kwargs['data_type'] == msg.data_type_name
             ]
+        if 'received_after' in kwargs:
+            msgs = self.received_after(kwargs['received_after'])
         return MessageSet(self.t_end, msgs)
 
     def append(self, message):
@@ -128,6 +141,12 @@ class MessageSet:
             m.sender
             for m in self.all()
         ])
+
+    def receivers(self):
+        receivers = set()
+        for m in self.all():
+            receivers.update(m.receivers)
+        return receivers
 
 
 class InformationType:
@@ -157,13 +176,13 @@ class MissionContext:
             for msg_type in self.message_types
         }
 
-    def utility_by_sender(self, messages, sender):
-        return self.utility_by_type(messages.filter(sender=sender))
+    def utility_by_receiver(self, messages, receiver):
+        return self.utility_by_type(messages.filter(receiver=receiver))
 
     def utility_dict(self, messages):
         return {
-            sender: self.utility_by_sender(messages, sender)
-            for sender in messages.senders()
+            receiver: self.utility_by_receiver(messages, receiver)
+            for receiver in messages.receivers()
         }
 
     def utility(self, messages):

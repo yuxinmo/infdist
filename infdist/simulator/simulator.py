@@ -15,3 +15,8 @@ def run():
 def now():
     """ Returns simulation time in ns, as integer """
     return int(ns.core.Simulator.Now().GetInteger())
+
+
+def now_float():
+    """ Returns simulation time in s, as float """
+    return now()/10**9

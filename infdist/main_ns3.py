@@ -1,63 +1,39 @@
-from simulator.network import Network
+from simulator.experiment import Experiment
 from simulator import simulator
-from optimization.models import Message
+from optimization.agent import FullKnowledgeAgent
 
 
-NODES_NUM = 3
-
-counter = {
-    i: 0
-    for i in range(NODES_NUM)
-}
-
-
-def gen_message_received(node_id):
-    def message_received(message):
-        global counter
-        print("{} received {}".format(node_id, message))
-        print(message.data)
-        counter[node_id] += 1
-
-    return message_received
+def drop_rate_experimnets():
+    for drop_ratio in [0, 0.25, 0.5, 0.75, 1]:
+        print(" ----- {} ---- ".format(drop_ratio))
+        e = Experiment(50, 20)
+        e.agent_kwargs = {'drop_ratio': drop_ratio}
+        e.run()
+        e.print_stats()
 
 
-net = Network(NODES_NUM)
-
-for i in range(NODES_NUM):
-    net.add_message_received_callback(
-        gen_message_received(i),
-        i
-    )
-
-simulator.schedule(0, lambda: net.send(Message(
-    0,
-    {1},
-    0,
-    'batt',
-    data={'name': 'michaŁ'}
-)))
-
-
-def get_callback(i):
-    def func():
-        print('sending', i)
-        net.send(Message(
-            i % NODES_NUM,
-            {1},
-            0,
-            'batt',
-            data={'name': 'm{}'.format(i)}
-        ))
-    return func
+def tree_experiments():
+    e = Experiment(3, t_end=4)
+    e.prepare_messages()
+    e.agent_cls = FullKnowledgeAgent
+    e.agent_kwargs = {
+        'all_messages': e.messages,
+        'agents': {
+            ident: lambda t: set()
+            for ident in range(e.nodes_num)
+        },
+        'now_func': simulator.now_float
+    }
+    e.prepare_network()
+    e.prepare_agents()
+    e.agents[0].flag = True
+    e.run()
+    e.print_stats()
 
 
-for i in range(100):
-    simulator.schedule(1 + i*.00001, get_callback(i))
+def main():
+    tree_experiments()
 
 
-def print_stats():
-    print(counter)
-
-
-simulator.schedule(3, print_stats)
-simulator.run()
+if __name__ == '__main__':
+    main()

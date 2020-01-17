@@ -132,12 +132,12 @@ class Network:
         return Message(
             header.GetSender(),
             receivers=receivers,
-            planned_t_sent=None,
+            t_gen=None,
             data_type_name=self.known_data_types.get_data_type_name(
                 header.GetDataType()),
             data=json.loads(header.GetData()),
             t_sent=header.GetTimestamp()/10**9,
-            t_rcv=simulator.now()/10**9,
+            t_rcv=simulator.now_float(),
         )
 
     def _gen_ns3_receive_callback(self, node_id):
@@ -162,8 +162,7 @@ class Network:
         )
 
     def send(self, message):
-        print("sending", ns.core.Simulator.Now())
-        packet = ns.network.Packet(1024)
+        packet = ns.network.Packet(2048)
 
         header = ns.network.InfDistHeader()
         header.SetDataType(

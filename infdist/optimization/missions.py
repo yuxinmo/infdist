@@ -1,8 +1,8 @@
 import numpy as np
 
-from aggregations import AggregationMax
-from models import MissionContext, MessageSet, Message, InformationType
-from utilities import UtilityBattery, UtilityPosition
+from .aggregations import AggregationMax
+from .models import MissionContext, MessageSet, Message, InformationType
+from .utilities import UtilityBattery, UtilityPosition
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
@@ -10,7 +10,7 @@ POSITION_DATA_TYPE = 'position'
 
 def generate_periodic_messages(
     t_end, senders, receivers, data_type_name,
-    t_start=0, f=1, data_f=lambda t: {}
+    t_start=0, f=1, data_f=lambda t: {}, sigma_t=0,
 ):
     if receivers is None:
         receivers = senders
@@ -18,7 +18,7 @@ def generate_periodic_messages(
         Message(
             agent_id,
             set(receivers) - set([agent_id]),
-            t,
+            abs(np.random.normal(t, sigma_t)),
             data_type_name,
             data_f(t)
         )
@@ -28,7 +28,7 @@ def generate_periodic_messages(
 
 
 def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
-                           level_start=1, level_end=0):
+                           level_start=1, level_end=0, sigma_t=0):
 
     def batt_level(t):
         a = (level_start - level_end) / (t_start - t_end)
@@ -41,7 +41,8 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
     return (
         generate_periodic_messages(
             t_end, senders, receivers,
-            BATTERY_DATA_TYPE, t_start, f, batt_level
+            BATTERY_DATA_TYPE, t_start, f, batt_level,
+            sigma_t,
         ),
         MissionContext(
             set([
@@ -55,10 +56,12 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
     )
 
 
-def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5):
+def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5,
+                          sigma_t=0):
     return (
         generate_periodic_messages(
-            t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f
+            t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f,
+            sigma_t
         ),
         MissionContext(set([
             InformationType(
@@ -73,15 +76,17 @@ def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5):
 def simulate_sending_messages_with_latency(msgs, latency):
     for m in msgs.all():
         if m.t_sent is None:
-            m.t_sent = m.planned_t_sent
+            m.t_sent = m.t_gen
         m.t_rcv = m.t_sent + latency
 
 
 def generate_simple_3D_reconstruction(
-    t_end, senders={0, 1}, receivers=None,
+    t_end, senders={0, 1}, receivers=None, sigma_t=0.01, seed=1,
 ):
+    np.random.seed(seed)
     return (
-        generate_batt_messages(t_end, senders, receivers, level_end=0.88)
+        generate_batt_messages(t_end, senders, receivers, level_end=0.1,
+                               sigma_t=sigma_t)
         # + generate_pos_messages(t_end, senders, receivers)
         # + generate_status_messages(t_end, senders, receivers)
         # + generate_objective_messages(t_end, senders, receivers)
@@ -92,5 +97,5 @@ def generate_simple_3D_reconstruction(
 if __name__ == "__main__":
     msgs, context = generate_simple_3D_reconstruction(22)
     print(msgs.messages.__str__(
-        ['sender', 'receivers', 'planned_t_sent', 't_sent', 'data',
+        ['sender', 'receivers', 't_gen', 't_sent', 'data',
          'data_type_name']))

@@ -115,7 +115,7 @@ if __name__ == "__main__":
     simulate_sending_messages_with_latency(messages, 0.01)
 
     print(messages.__str__(
-        ['sender', 'receivers', 'planned_t_sent', 't_sent', 't_rcv',
+        ['sender', 'receivers', 't_gen', 't_sent', 't_rcv',
          'data_type_name']))
 
     print(ctx.utility_dict(messages))
