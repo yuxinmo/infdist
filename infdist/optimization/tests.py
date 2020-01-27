@@ -1,17 +1,17 @@
 import unittest
 
-from optimization import adapt, adapt_bruteforce
-from missions import (
+from . import simplesim
+from .optimization import adapt, adapt_bruteforce
+from .missions import (
     generate_simple_3D_reconstruction,
     generate_batt_messages,
-    simulate_sending_messages_with_latency,
 )
 
 
 class BasicTests(unittest.TestCase):
     def test_basic_two_agents(self):
         messages, ctx = generate_simple_3D_reconstruction(8)
-        simulate_sending_messages_with_latency(messages, 0.01)
+        simplesim.latency(messages, 0.01)
 
         def available_throughput(t):
             return 1
@@ -34,7 +34,7 @@ class BasicTests(unittest.TestCase):
         )
         messages = messages1 + messages2
         ctx = ctx1
-        simulate_sending_messages_with_latency(messages, 0.01)
+        simplesim.latency(messages, 0.01)
 
         def available_throughput(t):
             return 1

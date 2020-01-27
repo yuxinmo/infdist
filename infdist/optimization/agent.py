@@ -2,14 +2,17 @@ from copy import copy, deepcopy
 import random
 
 from .dynamic_message_tree import DynamicMessageTree
+from .copying_message_tree import CopyingMessageTree
 from .models import MessageSet
 
 
 class BaseAgent:
-    def __init__(self, ident, net):
+    def __init__(self, ident, net, messages_context):
         self.ident = ident
         self.received_messages = MessageSet(0)
+        self.sent_messages = MessageSet(0)
         self.net = net
+        self.messages_context = messages_context
 
     def gen_message_received_callback(self):
         def message_received(message):
@@ -19,6 +22,7 @@ class BaseAgent:
     def send(self, m):
         assert m.sender == self.ident
         self.net.send(m)
+        self.sent_messages.append(m)
 
     def generated(self, m):
         raise NotImplementedError()
@@ -54,14 +58,24 @@ class FullKnowledgeAgent(BaseAgent):
     def __init__(self, *args, **kwargs):
         all_messages = kwargs.pop('all_messages')
         self.agents = kwargs.pop('agents')
-        """ now func is used to set t_sent for generated messages """
         self.now_func = kwargs.pop('now_func')
+        self.constraints = kwargs.pop('constraints')
         super().__init__(*args, **kwargs)
 
-        self.tree = DynamicMessageTree()
+        if True:
+            self.tree = DynamicMessageTree(
+                all_messages.t_end,
+                self.messages_context,
+                self.constraints,
+            )
+        else:
+            self.tree = CopyingMessageTree(
+                all_messages.t_end,
+                self.messages_context,
+            )
         self.tree.update_future(deepcopy(all_messages))
 
-        self.flag = False
+        self.active = True
 
     def send(self, message):
         t_sent = self.now_func()
@@ -71,13 +85,16 @@ class FullKnowledgeAgent(BaseAgent):
         self.tree.register_message(message_copy)
 
     def generated(self, message):
+        if not self.active:
+            return
+
         self.tree.progress_time(message.t_gen)
-        if self.flag:
-            if self.tree.decide(message):
-                print("sending", message)
-                self.send(message)
-            else:
-                print("dropping", message)
+        est_sent_message = copy(message)
+        est_sent_message.t_sent = self.now_func()
+        if self.tree.decide(est_sent_message):
+            self.send(message)
+        else:
+            pass
 
     def received(self, message):
         super().received(message)
@@ -86,3 +103,5 @@ class FullKnowledgeAgent(BaseAgent):
             set(self.agents.keys()) - set([message_copy.sender])
         )
         self.tree.register_message(message_copy)
+        latency = self.now_func() - message.t_gen
+        self.tree.latency = latency

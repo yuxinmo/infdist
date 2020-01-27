@@ -1,8 +1,7 @@
 
 class Aggregation:
-    def __init__(self, utility_func, messages):
+    def __init__(self, utility_func):
         self.utility_func = utility_func
-        self.messages = messages
 
     def func(self, t, s={}):
         raise NotImplementedError()
@@ -16,10 +15,17 @@ class Aggregation:
     def integrate(self, states=None):
         raise NotImplementedError()
 
+    def dynamic_integrate(self, states=None):
+        raise NotImplementedError()
 
-class AggregationMax(Aggregation):
-    def func(self, t, s):
-        msgs = self.messages.all()
+
+class AggregationMostRecent(Aggregation):
+    """
+    Aggregation integrates always only the most recent message.
+    The most recent message should also provide the most utility.
+    """
+    def func(self, messages, t, s):
+        msgs = messages.all()
         if not msgs:
             return 0
         else:
@@ -28,18 +34,33 @@ class AggregationMax(Aggregation):
                 for m in msgs
             )
 
-    def integrate(self):
-        # Assumes that max is always the most recent message
+    def _integration_step(self, m, next_m, t_end):
+        return self.utility_func.integrate(
+            m, m.t_rcv, min(next_m.t_rcv, t_end)
+        )
+
+    def integrate(self, messages):
         result = 0
-        msgs = self.messages.all()
+        msgs = messages.all()
         if not msgs:
             return 0
 
-        t_end = self.messages.t_end
+        t_end = messages.t_end
 
         for m, next_m in zip(msgs[:-1], msgs[1:]):
-            result += self.utility_func.integrate(
-                m, m.t_rcv, min(next_m.t_rcv, t_end)
-            )
+            result += self._integration_step(m, next_m, t_end)
         result += self.utility_func.integrate(msgs[-1], msgs[-1].t_rcv, t_end)
         return result
+
+    def dynamic_integrate_to_next_message(self, messages, message):
+        if messages.message is None:
+            return 0
+        m = messages.message
+        next_m = message
+        return self._integration_step(m, next_m, next_m.t_rcv)
+
+    def dynamic_integrate_to_end(self, messages, t_end):
+        m = messages.message
+        if m is None:
+            return 0
+        return self.utility_func.integrate(m, m.t_rcv, t_end)

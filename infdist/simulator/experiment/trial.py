@@ -1,0 +1,193 @@
+from copy import deepcopy
+
+from optimization.agent import (
+    FixedRatioAgent,
+    FullCommAgent,
+    FullKnowledgeAgent,
+)
+
+from simulator.network import Network
+from simulator import simulator
+from optimization import missions, simplesim
+from optimization.models import MessageSet
+
+
+class Trial:
+    def __init__(self, nodes_num, t_end):
+        self.nodes_num = nodes_num
+        self.t_end = t_end
+        self.agent_cls = FullCommAgent
+        self.agent_kwargs = {}
+        self.messages = None
+        self.ctx = None
+        self.net = None
+        self.agents = None
+        self.constraints = {}
+
+    def create_agent(self, i):
+        return self.agent_cls(i, self.net, self.ctx, **self.agent_kwargs)
+
+    def agent_stats(self):
+        return {
+            agent: (
+                len(agent.received_messages),
+                self.ctx.utility(agent.received_messages).value(),
+            )
+            for agent in self.agents
+        }
+
+    def stats(self):
+        total_utility = self.ctx.utility(self.all_received_messages()).value()
+        no_duplicates = MessageSet(
+            self.all_received_messages().t_end,
+            list(set(self.all_received_messages().all())),
+        )
+
+        constraints = {}
+        for name, constraint in self.constraints.items():
+            constraints[name] = constraint(no_duplicates)
+
+        all_messages = deepcopy(self.messages)
+        simplesim.latency(all_messages, 0)
+
+        return {
+            'received_num': sum(
+                [len(agent.received_messages) for agent in self.agents]
+            ),
+            'sent_num': sum(
+                [len(agent.sent_messages) for agent in self.agents]
+            ),
+            'sent_received_num': len(no_duplicates),
+            'total_utility': total_utility,
+            'normalized_utility': total_utility/len(self.agents)/self.t_end,
+            'total_messages': len(self.messages),
+            'constraints': constraints,
+            'max_utility': self.ctx.utility(all_messages).value()
+        }
+
+    def all_received_messages(self):
+        result = MessageSet(0, [])
+        for agent in self.agents:
+            result += agent.received_messages
+        return result
+
+    def print_stats(self):
+        stats = self.stats()
+        print(
+            (
+                "Received # {}, "
+                "total utility: {}, "
+                "normalized utility: {}"
+            ).format(
+                stats['received_num'],
+                stats['total_utility'],
+                stats['normalized_utility'],
+            )
+        )
+
+        print((
+            "Received {:.0f}% of all messages, "
+            "{:.0f}% of sent messages.").format(
+            stats['sent_received_num']/stats['total_messages']*100,
+            stats['sent_received_num']/stats['sent_num']*100,
+        ))
+
+        print("Max utility: {}".format(
+            stats['max_utility']
+        ))
+
+        for name, constraint_violations in stats['constraints'].items():
+            if constraint_violations > 0:
+                print("!!! {} constraint NOT met !!!".format(name))
+
+    def finish_mission(self):
+        real_t_end = simulator.now_float()
+        for a in self.agents:
+            a.finish_mission(real_t_end)
+
+    def prepare_messages(self):
+        if self.messages is not None:
+            assert self.ctx is not None
+            return  # already prepared
+        self.messages, self.ctx = missions.generate_simple_3D_reconstruction(
+            self.t_end, senders=set(range(self.nodes_num)),
+        )
+
+    def prepare_agents(self):
+        assert self.net is not None, "Network has to be prepared before agents"
+
+        if self.agents is not None:
+            return  # already prepared
+
+        self.agents = [
+            self.create_agent(i)
+            for i in range(self.nodes_num)
+        ]
+
+    def prepare_network(self):
+        if self.net is not None:
+            return  # already prepared
+        self.net = Network(self.nodes_num)
+
+    def run(self):
+        self.prepare_messages()
+        self.prepare_network()
+
+        self.prepare_agents()  # this has to be done after network
+
+        for i in range(self.nodes_num):
+            self.net.add_message_received_callback(
+                self.agents[i].gen_message_received_callback(),
+                i
+            )
+
+        for m in self.messages.all():
+            # print("Scheduling sending at {} by {}".format(m.t_gen, m.sender))
+            agent = self.agents[m.sender]
+            simulator.schedule(m.t_gen, agent.gen_generate_message_callback(m))
+
+        simulator.schedule(self.t_end, self.finish_mission)
+        simulator.run()
+
+
+class FixedRatioTrial(Trial):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.agent_cls = FixedRatioAgent
+
+    def set_drop_rate(self, drop_rate):
+        self.agent_kwargs = {'drop_ratio': drop_rate}
+
+
+class TreeTrial(Trial):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.prepare_messages()
+        self.agent_cls = FullKnowledgeAgent
+        self.agent_kwargs = {
+            'all_messages': self.messages,
+            'agents': {
+                ident: lambda t: set()
+                for ident in range(self.nodes_num)
+            },
+            'now_func': simulator.now_float,
+            'constraints': {}
+        }
+
+    @property
+    def constraints(self):
+        return self.agent_kwargs['constraints']
+
+    @constraints.setter
+    def constraints(self, value):
+        self.agent_kwargs['constraints'] = value
+
+    def set_drop_rate(self, drop_rate):
+        timeslot_length = 3.5
+        avg_msgs_per_second = len(self.messages)/self.t_end
+        self.constraints = {
+            'MSGNUM': simplesim.create_msgnum_constraint_violations(
+                (1-drop_rate)*(timeslot_length+1)*avg_msgs_per_second,
+                timeslot_length
+            ),
+        }

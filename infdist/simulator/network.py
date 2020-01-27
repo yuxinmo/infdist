@@ -132,11 +132,11 @@ class Network:
         return Message(
             header.GetSender(),
             receivers=receivers,
-            t_gen=None,
+            t_sent=None,
             data_type_name=self.known_data_types.get_data_type_name(
                 header.GetDataType()),
             data=json.loads(header.GetData()),
-            t_sent=header.GetTimestamp()/10**9,
+            t_gen=header.GetTimestamp()/10**9,
             t_rcv=simulator.now_float(),
         )
 
@@ -162,6 +162,7 @@ class Network:
         )
 
     def send(self, message):
+        # packet = ns.network.Packet(60480)
         packet = ns.network.Packet(2048)
 
         header = ns.network.InfDistHeader()
@@ -170,7 +171,7 @@ class Network:
         )
         header.SetTimestamp(simulator.now())
         header.SetSender(message.sender)
-        data = json.dumps(message.data)
+        data = json.dumps(vars(message.data))
         header.SetData(len(data), data)
         packet.AddHeader(header)
         self.sockets[message.sender].Send(packet)

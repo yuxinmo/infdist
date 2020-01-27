@@ -1,6 +1,6 @@
 import numpy as np
 
-from .aggregations import AggregationMax
+from .aggregations import AggregationMostRecent
 from .models import MissionContext, MessageSet, Message, InformationType
 from .utilities import UtilityBattery, UtilityPosition
 
@@ -11,7 +11,14 @@ POSITION_DATA_TYPE = 'position'
 def generate_periodic_messages(
     t_end, senders, receivers, data_type_name,
     t_start=0, f=1, data_f=lambda t: {}, sigma_t=0,
+    append_sender_to_data_type_name=False,
 ):
+    def gen_data_type_name(sender):
+        if append_sender_to_data_type_name:
+            return data_type_name + str(sender)
+        else:
+            return data_type_name
+
     if receivers is None:
         receivers = senders
     return MessageSet(t_end, [
@@ -19,7 +26,7 @@ def generate_periodic_messages(
             agent_id,
             set(receivers) - set([agent_id]),
             abs(np.random.normal(t, sigma_t)),
-            data_type_name,
+            gen_data_type_name(agent_id),
             data_f(t)
         )
         for agent_id in senders
@@ -36,21 +43,29 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
         level = a*t+b
         return {
             'battery_level': level,
+            'max_depl_rate': 0.1,
         }
 
+    messages = generate_periodic_messages(
+        t_end, senders, receivers,
+        BATTERY_DATA_TYPE, t_start, f, batt_level,
+        sigma_t,
+        append_sender_to_data_type_name=True,
+    )
     return (
-        generate_periodic_messages(
-            t_end, senders, receivers,
-            BATTERY_DATA_TYPE, t_start, f, batt_level,
-            sigma_t,
-        ),
+        messages,
         MissionContext(
             set([
                 InformationType(
-                    BATTERY_DATA_TYPE,
+                    data_type_name,
                     utility_cls=UtilityBattery,
-                    aggregation_cls=AggregationMax,
+                    aggregation_cls=AggregationMostRecent,
                 )
+                for data_type_name in set(
+                    m.data_type_name
+                    for m in messages.all()
+                )
+
             ])
         )
     )
@@ -58,40 +73,49 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
 
 def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5,
                           sigma_t=0):
+    messages = generate_periodic_messages(
+        t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f,
+        sigma_t,
+        append_sender_to_data_type_name=True,
+    )
     return (
-        generate_periodic_messages(
-            t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f,
-            sigma_t
-        ),
+        messages,
         MissionContext(set([
             InformationType(
-                POSITION_DATA_TYPE,
+                m.data_type_name,
                 utility=UtilityPosition,
-                aggregation=AggregationMax,
+                aggregation=AggregationMostRecent,
             )
+            for m in messages.all()
         ]))
     )
-
-
-def simulate_sending_messages_with_latency(msgs, latency):
-    for m in msgs.all():
-        if m.t_sent is None:
-            m.t_sent = m.t_gen
-        m.t_rcv = m.t_sent + latency
 
 
 def generate_simple_3D_reconstruction(
     t_end, senders={0, 1}, receivers=None, sigma_t=0.01, seed=1,
 ):
+    if receivers is None:
+        receivers = senders
+
     np.random.seed(seed)
-    return (
-        generate_batt_messages(t_end, senders, receivers, level_end=0.1,
-                               sigma_t=sigma_t)
-        # + generate_pos_messages(t_end, senders, receivers)
-        # + generate_status_messages(t_end, senders, receivers)
-        # + generate_objective_messages(t_end, senders, receivers)
-        # + generate_map_messages(t_end, senders, receivers)
-    )
+
+    all_messages = MessageSet(t_end, [])
+    all_contexts = MissionContext(set())
+
+    for sender in senders:
+        level_start = np.random.random()
+        level_end = level_start * np.random.random()
+        messages, context = generate_batt_messages(
+            t_end, {sender}, receivers,
+            t_start=np.random.random()*0.1,
+            level_start=max(level_start, 0.1),
+            level_end=max(level_end, 0.03),
+            sigma_t=sigma_t
+        )
+        all_messages += messages
+        all_contexts += context
+
+    return all_messages, all_contexts
 
 
 if __name__ == "__main__":

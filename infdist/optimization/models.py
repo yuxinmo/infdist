@@ -1,4 +1,12 @@
+from types import SimpleNamespace
+
+
 class Message:
+    __slots__ = (
+        'sender', 'receivers', 't_gen', 't_sent', 't_rcv', 'data_type_name',
+        'data',
+    )
+
     def __init__(self, sender, receivers, t_gen,
                  data_type_name, data=None,
                  t_sent=None, t_rcv=None):
@@ -8,7 +16,14 @@ class Message:
         self.t_sent = t_sent
         self.t_rcv = t_rcv
         self.data_type_name = data_type_name
-        self.data = data
+        self.data = SimpleNamespace(**data)
+
+    def __hash__(self):
+        return hash((
+            self.sender,
+            self.t_sent,
+            self.data_type_name,
+        ))
 
     def __repr__(self):
         return (
@@ -22,9 +37,28 @@ class Message:
             )
         )
 
+    def __str__(self, param_names=['sender', 't_gen']):
+        return 'Message<{}>'.format(
+            ', '.join([
+                '{}={}'.format(
+                    param_name, str(getattr(self, param_name))
+                )
+                for param_name in param_names
+            ])
+        )
+
+    def __eq__(self, other):
+        if other is None:
+            return False
+        return self.t_gen == other.t_gen and self.sender == other.sender
+
 
 class MessageSet:
-    def __init__(self, t_end, messages=None, t_start=None):
+    __slots__ = (
+        't_end', 't_start', '_messages'
+    )
+
+    def __init__(self, t_end, messages=None, t_start=0):
         if messages is None:
             messages = []
         self.t_end = t_end
@@ -34,9 +68,12 @@ class MessageSet:
 
     def convert_to_relative_time(self):
         def relative_time(t):
+            if t is None:
+                return None
             return (t-self.t_start).total_seconds()
-        for msg in self._messages:
+        for msg in self.all():
             msg.t_sent = relative_time(msg.t_sent)
+            msg.t_gen = relative_time(msg.t_gen)
             msg.t_rcv = relative_time(msg.t_rcv)
         self.t_end = relative_time(self.t_end)
         self.t_start = relative_time(self.t_start)
@@ -48,22 +85,15 @@ class MessageSet:
         if not self._messages:
             return
 
-        if self._messages[0].t_sent is None:
-            def key(m):
-                return m.t_gen
-        else:
-            def key(m):
-                return m.t_sent
+        def key(m):
+            return m.t_gen
 
         self._messages.sort(key=key)
-
-    def sent_before(self, t):
-        return self.all()[0:self.supremum_idx(t)]
 
     def received_after(self, t):
         return self.all()[self.supremum_idx(t, 't_rcv'):]
 
-    def supremum_idx(self, t, attribute_name='t_sent'):
+    def supremum_idx(self, t, attribute_name='t_gen'):
         """ Implemented using binary search """
         msgs = self.all()
         lft = 0
@@ -86,17 +116,12 @@ class MessageSet:
             )
         )
 
-    def __str__(self, param_names=['sender', 'receivers', 't_sent']):
+    def __str__(self, param_names=['sender', 'receivers', 't_gen']):
         return '\n'.join([
             self.__repr__(),
         ] + [
-            '\tMessage<{}>'.format(
-                ', '.join([
-                    '{}={}'.format(
-                        param_name, str(getattr(m, param_name))
-                    )
-                    for param_name in param_names
-                ])
+            '\t{}'.format(
+                m.__str__(param_names)
             )
             for m in self.all()
         ])
@@ -105,10 +130,11 @@ class MessageSet:
         return len(self._messages)
 
     def __add__(self, other):
+        t_start = min(self.t_start, other.t_start)
         return MessageSet(
             max(self.t_end, other.t_end),
             self._messages + other._messages,
-            min(self.t_start, other.t_start),
+            t_start,
         )
 
     def filter(self, **kwargs):
@@ -136,6 +162,13 @@ class MessageSet:
         self._messages.append(message)
         self._sort()
 
+    def remove(self, message):
+        self._messages = [
+            m
+            for m in self.all()
+            if m != message
+        ]
+
     def senders(self):
         return set([
             m.sender
@@ -150,25 +183,46 @@ class MessageSet:
 
 
 class InformationType:
+    __slots__ = (
+        'data_type_name', 'utility_cls', 'aggregation',
+    )
+
     def __init__(self, data_type_name, utility_cls, aggregation_cls):
         self.data_type_name = data_type_name
         self.utility_cls = utility_cls
-        self.aggregation_cls = aggregation_cls
+        self.aggregation = aggregation_cls(utility_cls())
 
     def __repr__(self):
         return "<InformationType({})>".format(self.data_type_name)
 
 
+class TotalUtility:
+    __slots__ = (
+        'utility_dict',
+    )
+
+    def __init__(self, utility_dict):
+        self.utility_dict = utility_dict
+
+    def value(self):
+        return sum([
+            sum(type_utility.values())
+            for type_utility in self.utility_dict.values()
+        ])
+
+
 class MissionContext:
+    __slots__ = (
+        'message_types',
+    )
+
     def __init__(self, message_types):
         self.message_types = message_types
 
     def utility_type(self, messages, msg_type):
-        aggregation = msg_type.aggregation_cls(
-            msg_type.utility_cls(),
-            messages.filter(data_type_name=msg_type.data_type_name)
+        return msg_type.aggregation.integrate(
+            messages.filter(data_type=msg_type.data_type_name)
         )
-        return aggregation.integrate()
 
     def utility_by_type(self, messages):
         return {
@@ -179,17 +233,16 @@ class MissionContext:
     def utility_by_receiver(self, messages, receiver):
         return self.utility_by_type(messages.filter(receiver=receiver))
 
-    def utility_dict(self, messages):
+    def _utility_dict(self, messages):
         return {
             receiver: self.utility_by_receiver(messages, receiver)
             for receiver in messages.receivers()
         }
 
     def utility(self, messages):
-        return sum([
-            sum(by_type.values())
-            for by_type in self.utility_dict(messages).values()
-        ])
+        return TotalUtility(
+            self._utility_dict(messages)
+        )
 
     def __add__(self, other):
         return MissionContext(

@@ -14,52 +14,37 @@ class Utility:
 
 
 class UtilityBattery(Utility):
-    def __init__(self):
-        self.MAX_BATT_DEPLETION_RATE = 0.1
-
     def func(self, m, t, s):
-        length = (t-m.t_sent)
+        length = (t-m.t_gen)
         if isinstance(length, timedelta):
             length = length.total_seconds()
 
         return 0 if t < m.t_rcv else max(
-            1 - (length *
-                 self.MAX_BATT_DEPLETION_RATE)/m.data['battery_level'],
+            1 - (
+                length *
+                m.data.max_depl_rate
+            )/m.data.battery_level,
             0
         )
 
     def integrate(self, m, t_start, t_end):
-        # all times in the system are datetime and timedelta objects,
-        # but here in order to make the computation possible
-        # we define a time reference point and then treat all times
-        # as a difference between them and a reference point, in seconds
+        t_rcv = m.t_rcv
+        t_gen = m.t_gen
 
-        reference = t_start
+        max_depl_rate = m.data.max_depl_rate
+        batt_level = m.data.battery_level
 
-        def normalize(t):
-            t = t - reference
-            if isinstance(t, timedelta):
-                return t.total_seconds()
-            else:
-                return t
+        a = t_start if t_start > t_rcv else t_rcv
 
-        t_start = 0
-        t_rcv = normalize(m.t_rcv)
-        t_end = normalize(t_end)
-        t_sent = normalize(m.t_sent)
-
-        a = max(t_start, t_rcv)
-        b = min(
-            t_end,
-            m.data['battery_level']/self.MAX_BATT_DEPLETION_RATE + t_sent
-        )
+        t_batt_zero = batt_level/max_depl_rate + t_gen
+        b = t_end if t_end < t_batt_zero else t_batt_zero
 
         if a > b:
             result = 0
         else:
             result = b - a + (
-                (self.MAX_BATT_DEPLETION_RATE/m.data['battery_level']) *
-                (t_sent*(b-a) - ((b-a)*(b+a) / 2))
+                (max_depl_rate/batt_level) *
+                (t_gen*(b-a) - ((b-a)*(b+a) / 2))
             )
         return result
 
@@ -74,7 +59,7 @@ class UtilityPosition(Utility):
             return 0
         else:
             return max(
-                1 - ((t-m.t_sent)**2 * math.pi*self.VEL_MAX**2)/self.AREA,
+                1 - ((t-m.t_gen)**2 * math.pi*self.VEL_MAX**2)/self.AREA,
                 0
             )
 

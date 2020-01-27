@@ -20,6 +20,16 @@ _PLOTLY_COLORS = [
 ]
 
 
+def write_messageset_plots(messages, context, f):
+    for msg_type in context.message_types:
+        type_messages = messages.filter(data_type=msg_type.data_type_name)
+        plots = [gen_message_plots(
+            type_messages,
+            msg_type.utility_cls(),
+        )]
+        write_plots(plots, f + msg_type.data_type_name + '.pdf')
+
+
 def get_plotly_color(i, alpha=1):
     return 'rgba({}, {}, {}, {})'.format(*(_PLOTLY_COLORS[i] + (alpha,)))
 
@@ -29,7 +39,7 @@ def EMPTY_HISTORY(_):
 
 
 def gen_message_plots(messages, utility, history=EMPTY_HISTORY,
-                      message_annotations=[]):
+                      message_annotations=[], dash='dash'):
     data = []
     annotations = []
 
@@ -65,7 +75,7 @@ def gen_message_plots(messages, utility, history=EMPTY_HISTORY,
         mode='lines',
         line={
             'width': 3,
-            'dash': 'dash',
+            'dash': dash,
             'color': 'black',
         }
     )
@@ -85,7 +95,7 @@ def gen_message_plots(messages, utility, history=EMPTY_HISTORY,
             showlegend=False,
             line={
                 'width': 3,
-                'dash': 'dash',
+                'dash': dash,
             }
         )
         data.append(d1)
@@ -94,7 +104,7 @@ def gen_message_plots(messages, utility, history=EMPTY_HISTORY,
         'annotations': annotations,
         'xaxis': {
             'range': [0, messages.t_end],
-            'title': 'time',
+            'title': 'time [s]',
         },
         'yaxis': {
             'rangemode': 'tozero',
@@ -104,13 +114,13 @@ def gen_message_plots(messages, utility, history=EMPTY_HISTORY,
 
 
 def gen_aggregation_plots(messages, utility, AggregationCls,
-                          history=EMPTY_HISTORY):
+                          history=EMPTY_HISTORY, precision=0.0001):
     data = []
 
     aggregation = AggregationCls(utility, messages)
 
     xs = np.arange(
-        0, messages.t_end, 0.01
+        0, messages.t_end, precision
     )
     ys = aggregation.evaluate(xs, [history(x) for x in xs])
 
@@ -130,50 +140,6 @@ def gen_aggregation_plots(messages, utility, AggregationCls,
     return {'data': data}
 
 
-def gen_1D_map_messages_plot(messages):
-    shapes = []
-    data = []
-
-    for i, m in enumerate(messages.all()):
-        shapes.append({
-            'type': 'rect',
-            'x0': m.t_rcv,
-            'y0': m.data[0],
-            'x1': messages.t_end,
-            'y1': m.data[1],
-            'line': {
-                'color': get_plotly_color(i+2, 0.0),
-                'width': 3,
-            },
-            'fillcolor': get_plotly_color(i+2, 0.5),
-        })
-
-    d1 = go.Scatter(
-        x=(0,),
-        y=(0,),
-        name='Map fragments',
-        mode='lines',
-        line={
-            'width': 10,
-            'color': 'rgba(0, 0, 0, 0.5)',
-        },
-    )
-    data.append(d1)
-
-    return {
-        'data': data,
-        'shapes': shapes,
-        'xaxis': {
-            'range': [0, messages.t_end],
-            'title': 'time',
-        },
-        'yaxis': {
-            'rangemode': 'tozero',
-            'title': 'position',
-        },
-    }
-
-
 def gen_data_plot(plot_data, name=None, line_args=None):
     data = []
 
@@ -191,37 +157,14 @@ def gen_data_plot(plot_data, name=None, line_args=None):
         x=xs,
         y=ys,
         line=line_args,
+        mode='lines',
     )
 
     data.append(d1)
     return {'data': data}
 
 
-def gen_radius_plot(plot_data, radius, name=None):
-    data = []
-
-    xs, ys = zip(*plot_data)
-    xs_rev = xs[::-1]
-    ys_upper = [y + radius for y in ys]
-    ys_lower = [y - radius for y in ys[::-1]]
-
-    d1 = go.Scatter(
-        name=name or 'data',
-        x=xs+xs_rev,
-        y=ys_upper+ys_lower,
-        fill='tozerox',
-        fillcolor='rgba(0,0,0,0.1)',
-        line={
-            'color': 'rgba(0,0,0,1)',
-            'width': 1,
-        }
-    )
-
-    data.append(d1)
-    return {'data': data}
-
-
-def _generate_fig(plots, additional_layout_kwargs={}):
+def _generate_fig(plots, additional_layout_kwargs={}, width=400, height=200):
     data = sum([p.get('data', []) for p in plots], [])
     layout_kwargs = {
         "margin": go.layout.Margin(
@@ -231,8 +174,8 @@ def _generate_fig(plots, additional_layout_kwargs={}):
                 t=10,
                 pad=0
             ),
-        # "width": 400,
-        # "height": 200,
+        "width": width,
+        "height": height,
         "legend": {
             "orientation": "h",
             "bgcolor": "rgba(0, 0, 0, 0)",
@@ -256,13 +199,15 @@ def _generate_fig(plots, additional_layout_kwargs={}):
     return go.Figure(data, layout=layout)
 
 
-def display_plots(plots):
-    fig = _generate_fig(plots)
+def display_plots(plots, width=400, height=200):
+    fig = _generate_fig(plots, width=width, height=height)
     plotly.offline.iplot(fig)
 
 
-def write_plots(plots, f="/tmp/plot.pdf"):
-    fig = _generate_fig(plots)
+def write_plots(plots, f="/tmp/plot.pdf", width=800, height=300):
+    if not f:
+        return
+    fig = _generate_fig(plots, width=width, height=height)
     pio.write_image(fig, f)
 
 
