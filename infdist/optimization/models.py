@@ -184,13 +184,14 @@ class MessageSet:
 
 class InformationType:
     __slots__ = (
-        'data_type_name', 'utility_cls', 'aggregation',
+        'data_type_name', 'utility_cls', 'aggregation', 'weight',
     )
 
-    def __init__(self, data_type_name, utility_cls, aggregation_cls):
+    def __init__(self, data_type_name, utility_cls, aggregation_cls, weight=1):
         self.data_type_name = data_type_name
         self.utility_cls = utility_cls
         self.aggregation = aggregation_cls(utility_cls())
+        self.weight = weight
 
     def __repr__(self):
         return "<InformationType({})>".format(self.data_type_name)
@@ -220,7 +221,7 @@ class MissionContext:
         self.message_types = message_types
 
     def utility_type(self, messages, msg_type):
-        return msg_type.aggregation.integrate(
+        return msg_type.weight * msg_type.aggregation.integrate(
             messages.filter(data_type=msg_type.data_type_name)
         )
 

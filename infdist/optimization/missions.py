@@ -35,7 +35,12 @@ def generate_periodic_messages(
 
 
 def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
-                           level_start=1, level_end=0, sigma_t=0):
+                           level_start=1, level_end=0, sigma_t=0,
+                           max_depl_rate_mi=0.003, max_depl_rate_sigma=0.002
+                           ):
+
+    # mi = np.random.normal(0.016, 0.01)
+    mi = np.random.normal(0.2, 0.01)
 
     def batt_level(t):
         a = (level_start - level_end) / (t_start - t_end)
@@ -43,7 +48,7 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
         level = a*t+b
         return {
             'battery_level': level,
-            'max_depl_rate': 0.1,
+            'max_depl_rate': max(0.003, np.random.normal(mi, 0.002))
         }
 
     messages = generate_periodic_messages(
@@ -60,6 +65,7 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                     data_type_name,
                     utility_cls=UtilityBattery,
                     aggregation_cls=AggregationMostRecent,
+                    weight=np.random.random()*10+0.5
                 )
                 for data_type_name in set(
                     m.data_type_name
@@ -92,7 +98,7 @@ def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5,
 
 
 def generate_simple_3D_reconstruction(
-    t_end, senders={0, 1}, receivers=None, sigma_t=0.01, seed=1,
+    t_end, senders={0, 1}, receivers=None, sigma_t=0.01, seed=2,
 ):
     if receivers is None:
         receivers = senders
@@ -107,9 +113,11 @@ def generate_simple_3D_reconstruction(
         level_end = level_start * np.random.random()
         messages, context = generate_batt_messages(
             t_end, {sender}, receivers,
-            t_start=np.random.random()*0.1,
-            level_start=max(level_start, 0.1),
-            level_end=max(level_end, 0.03),
+            # f=(np.random.random()+.2),
+            f=np.random.normal(1, 0.1),
+            t_start=np.random.random(),
+            level_start=level_start,
+            level_end=level_end,
             sigma_t=sigma_t
         )
         all_messages += messages

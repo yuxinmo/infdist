@@ -23,9 +23,12 @@ class Trial:
         self.net = None
         self.agents = None
         self.constraints = {}
+        self.now_func = simulator.now_float
+        self.network_data_rate = 5.5
 
     def create_agent(self, i):
-        return self.agent_cls(i, self.net, self.ctx, **self.agent_kwargs)
+        return self.agent_cls(i, self.net, self.ctx, self.now_func,
+                              **self.agent_kwargs)
 
     def agent_stats(self):
         return {
@@ -42,6 +45,12 @@ class Trial:
             self.all_received_messages().t_end,
             list(set(self.all_received_messages().all())),
         )
+
+        latencies = [
+            m.t_rcv - m.t_gen
+            for m in self.all_received_messages().all()
+        ]
+        avg_latency = sum(latencies)/(len(latencies) or 1)
 
         constraints = {}
         for name, constraint in self.constraints.items():
@@ -62,7 +71,8 @@ class Trial:
             'normalized_utility': total_utility/len(self.agents)/self.t_end,
             'total_messages': len(self.messages),
             'constraints': constraints,
-            'max_utility': self.ctx.utility(all_messages).value()
+            'max_utility': self.ctx.utility(all_messages).value(),
+            'avg_latency': avg_latency,
         }
 
     def all_received_messages(self):
@@ -75,11 +85,12 @@ class Trial:
         stats = self.stats()
         print(
             (
-                "Received # {}, "
+                "Received # {}, sent: {}, "
                 "total utility: {}, "
                 "normalized utility: {}"
             ).format(
                 stats['received_num'],
+                stats['sent_num'],
                 stats['total_utility'],
                 stats['normalized_utility'],
             )
@@ -90,6 +101,11 @@ class Trial:
             "{:.0f}% of sent messages.").format(
             stats['sent_received_num']/stats['total_messages']*100,
             stats['sent_received_num']/stats['sent_num']*100,
+        ))
+        print("Achieved data rate: {:.3f} Mbps with avg latency of {}".format(
+            stats['sent_received_num']*self.net.packet_size * 8 / 10**6
+            / self.t_end,
+            stats['avg_latency'],
         ))
 
         print("Max utility: {}".format(
@@ -127,7 +143,7 @@ class Trial:
     def prepare_network(self):
         if self.net is not None:
             return  # already prepared
-        self.net = Network(self.nodes_num)
+        self.net = Network(self.nodes_num, self.network_data_rate)
 
     def run(self):
         self.prepare_messages()
@@ -170,9 +186,10 @@ class TreeTrial(Trial):
                 ident: lambda t: set()
                 for ident in range(self.nodes_num)
             },
-            'now_func': simulator.now_float,
             'constraints': {}
         }
+        self.drop_rate_set = False
+        self.throughput_set = False
 
     @property
     def constraints(self):
@@ -182,12 +199,29 @@ class TreeTrial(Trial):
     def constraints(self, value):
         self.agent_kwargs['constraints'] = value
 
-    def set_drop_rate(self, drop_rate):
-        timeslot_length = 3.5
-        avg_msgs_per_second = len(self.messages)/self.t_end
+    def add_msgnum_constraint(self, messages_num, timeslot_length):
         self.constraints = {
             'MSGNUM': simplesim.create_msgnum_constraint_violations(
-                (1-drop_rate)*(timeslot_length+1)*avg_msgs_per_second,
-                timeslot_length
+                messages_num, timeslot_length
             ),
         }
+
+    def add_throughput_constraint(self, throughput, timeslot_length):
+        message_size = self.net.packet_size
+        self.constraints = {
+            'TPUT': simplesim.create_throughput_constraint_violations(
+                throughput, timeslot_length, message_size,
+            ),
+        }
+
+    def set_throughput(self, throughput):
+        self.add_throughput_constraint(throughput, 1)
+
+    def set_drop_rate(self, drop_rate):
+        assert not self.drop_rate_set
+        timeslot_length = 3.5
+        avg_msgs_per_second = len(self.messages)/self.t_end
+        self.add_msgnum_constraint(
+                (1-drop_rate)*(timeslot_length+1)*avg_msgs_per_second,
+                timeslot_length
+        )

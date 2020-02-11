@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import deepcopy, copy
 from datetime import datetime
 
 
@@ -37,7 +37,10 @@ class TreeNode(Node):
         return self.future_messages.message
 
     def create_positive_child(self, new_future):
-        new_sent = self.sent_messages.plus(self.message, False)
+        message = copy(self.message)
+        # message.t_sent = message.t_gen
+        # message.t_rcv = message.t_gen
+        new_sent = self.sent_messages.plus(message, False)
         for constraint in self.constraints.values():
             if constraint(new_sent) > 0:
                 return
@@ -102,7 +105,7 @@ class DynamicMessageTree:
 
     @latency.setter
     def latency(self, latency):
-        self.pessymistic_latency = latency * 2
+        self.pessymistic_latency = latency
         self.optimistic_latency = latency / 2
 
     def reinit_mcts(self, message):
@@ -113,8 +116,19 @@ class DynamicMessageTree:
                 node.create_negative_child(new_future)
                 node.create_positive_child(new_future)
 
+            if node.message is not None:
+                current_t = node.message.t_gen
+            elif node.future_messages.message is not None:
+                current_t = node.future_messages.message.t_gen
+            elif node.sent_messages.message is not None:
+                current_t = node.sent_messages.message.t_gen
+            else:
+                current_t = 0  # nothing was sent during the whole mission
+                assert new_future is None
+
             node.update_win_value(
                 node.dynamic_utility.value()/self.max_utility
+                * self.t_end / current_t
             )
         future_messages = self.future_messages
         self.montecarlo = MonteCarlo(TreeNode(
@@ -154,6 +168,8 @@ class DynamicMessageTree:
 
         if message.t_rcv is None:
             message.t_rcv = message.t_gen + self.optimistic_latency
+        if message.t_sent is None:
+            message.t_sent = message.t_gen
         self.future_messages = self.future_messages.tricky_remove(message)
 
         self.past_messages = self.past_messages.plus(
@@ -168,23 +184,25 @@ class DynamicMessageTree:
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
         message.t_rcv = message.t_gen + self.optimistic_latency
-        self.montecarlo.simulate(2000)
+        self.montecarlo.simulate(200)
         simulate_time = datetime.now()
 
-        # self.debug_once_agents()
-        if message.t_sent > 9:
-            self.debug_once()
+        # if len(self.montecarlo.root_node.future_messages) < 8:
+        #     print("Debugging!")
+        #     self.debug_once()
+        #     print("Your turn to debug!")
 
         while self.montecarlo.root_node.message != message:
             self.montecarlo.root_node = self.montecarlo.make_choice()
         choice = self.montecarlo.make_choice()
 
         end_time = datetime.now()
-        print("MCTS init: {}, simulate: {}, all: {}".format(
-            mcts_init_time - start_time,
-            simulate_time - mcts_init_time,
-            end_time - start_time,
-        ))
+        if self.debug:
+            print("MCTS init: {}, simulate: {}, all: {}".format(
+                mcts_init_time - start_time,
+                simulate_time - mcts_init_time,
+                end_time - start_time,
+            ))
 
         if message in choice.sent_messages.all():
             return True
@@ -209,6 +227,17 @@ class DynamicMessageTree:
         if node is None:
             node = self.montecarlo.root_node
         show_graph(node)
+
+    def verbose_repr(self):
+        return (
+            "####\n"
+            "Past:\n {}\n"
+            "Future:\n {}\n"
+            "----\n"
+        ).format(
+            self.past_messages.__str__(['t_sent', 't_rcv']),
+            self.future_messages.__str__(['t_sent', 't_rcv']),
+        )
 
     def __str__(self):
         return (

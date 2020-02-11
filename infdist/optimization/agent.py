@@ -7,12 +7,13 @@ from .models import MessageSet
 
 
 class BaseAgent:
-    def __init__(self, ident, net, messages_context):
+    def __init__(self, ident, net, messages_context, now_func):
         self.ident = ident
         self.received_messages = MessageSet(0)
         self.sent_messages = MessageSet(0)
         self.net = net
         self.messages_context = messages_context
+        self.now_func = now_func
 
     def gen_message_received_callback(self):
         def message_received(message):
@@ -22,6 +23,7 @@ class BaseAgent:
     def send(self, m):
         assert m.sender == self.ident
         self.net.send(m)
+        m.t_sent = self.now_func()
         self.sent_messages.append(m)
 
     def generated(self, m):
@@ -58,7 +60,6 @@ class FullKnowledgeAgent(BaseAgent):
     def __init__(self, *args, **kwargs):
         all_messages = kwargs.pop('all_messages')
         self.agents = kwargs.pop('agents')
-        self.now_func = kwargs.pop('now_func')
         self.constraints = kwargs.pop('constraints')
         super().__init__(*args, **kwargs)
 
@@ -78,10 +79,8 @@ class FullKnowledgeAgent(BaseAgent):
         self.active = True
 
     def send(self, message):
-        t_sent = self.now_func()
         super().send(message)
         message_copy = copy(message)
-        message_copy.t_sent = t_sent
         self.tree.register_message(message_copy)
 
     def generated(self, message):
@@ -89,6 +88,7 @@ class FullKnowledgeAgent(BaseAgent):
             return
 
         self.tree.progress_time(message.t_gen)
+
         est_sent_message = copy(message)
         est_sent_message.t_sent = self.now_func()
         if self.tree.decide(est_sent_message):

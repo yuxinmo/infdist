@@ -31,13 +31,22 @@ class DataTypesStore:
 
 class Network:
     DATA_PORT = 4477
+    BACKGROUND_PORT = 8082
+    AVAILABLE_DATA_RATES = {
+        1: 'DsssRate1Mbps',
+        2: 'DsssRate2Mbps',
+        5.5: 'DsssRate5_5Mbps',
+        11: 'DsssRate11Mbps',
+    }
 
-    def __init__(self, nodes_num):
+    def __init__(self, nodes_num, data_rate=5.5):
+        self.initialized = False
         self.known_data_types = DataTypesStore()
         self._message_received_callbacks = defaultdict(set)
 
         self.nodes = ns.network.NodeContainer()
         self.nodes.Create(nodes_num)
+        self.set_data_rate(data_rate)
 
         self._init_network()
 
@@ -60,13 +69,102 @@ class Network:
             socket.SetAllowBroadcast(True)
             socket.Bind(any_address)
             socket.Connect(broadcast_address)
+        self.use_small_packets()
+
+    def add_background_traffic(self, t_start, t_end, throughput):
+        """
+        throughput in Mbps
+        """
+        any_address = ns.network.InetSocketAddress(
+            ns.network.Ipv4Address.GetAny(), self.BACKGROUND_PORT
+        )
+
+        def source_rcvd(*args, **kwargs):
+            pass
+
+        def succeeded(a):
+            # print("Connected")
+            pass
+
+        def send_callback(a, b):
+            pass
+
+        def not_succeeded(a):
+            print("ERROR: not connected")
+
+        def accept_callback(a, b):
+            return True
+
+        def new_connection(socket, address):
+            socket.SetRecvCallback(source_rcvd)
+
+        sockets = []
+        for i in range(1, 3):
+            node = self.nodes.Get(i)
+            socket = ns.network.Socket.CreateSocket(
+                node,
+                ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
+            )
+            socket.Bind(any_address)
+            socket.Listen()
+            sockets.append(socket)
+
+            socket.SetConnectCallback(succeeded, not_succeeded)
+            socket.SetAcceptCallback(accept_callback, new_connection)
+
+        source = ns.network.Socket.CreateSocket(
+            self.nodes.Get(0),
+            ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
+        )
+        source.SetConnectCallback(succeeded, not_succeeded)
+        source.SetSendCallback(send_callback)
+
+        self.background_source = source
+        self.connect_background()
+        self.background_packet_size = 1000
+        packets = int(
+            throughput*10**6/8*(t_end-t_start)/self.background_packet_size
+        )
+        for i in range(packets):
+            simulator.schedule(
+                t_start + i/packets * (t_end-t_start),
+                self.send_background_packet
+            )
+
+    def send_background_packet(self, size=None):
+        if size is None:
+            size = self.background_packet_size
+
+        if(self.background_source.GetTxAvailable() < size):
+            return
+        packet = ns.network.Packet(size)
+        self.background_source.Send(packet, 0)
+        # print(self.background_source.GetErrno())
+
+    def connect_background(self):
+        sink_address = ns.network.InetSocketAddress(
+            ns.network.Ipv4Address("10.1.1.2"), self.BACKGROUND_PORT,
+        )
+        self.background_source.Connect(sink_address)
+
+    def use_small_packets(self):
+        self.packet_size = 2048
+
+    def use_big_packets(self):
+        self.packet_size = 60480
+
+    def set_data_rate(self, data_rate):
+        assert not self.initialized, \
+            "Cannot change data rate after network initialization"
+        assert data_rate in self.AVAILABLE_DATA_RATES, "Unsupported data rate"
+        self.phy_mode = self.AVAILABLE_DATA_RATES[data_rate]
 
     def _init_network(self):
+        self.initialized = True
         rss = -80
-        phy_mode = "DsssRate1Mbps"
 
         wifi = ns.wifi.WifiHelper()
-        wifi.SetStandard(ns.wifi.WIFI_PHY_STANDARD_80211b)
+        wifi.SetStandard(ns.wifi.WIFI_PHY_STANDARD_80211g)
 
         wifi_phy = ns.wifi.YansWifiPhyHelper.Default()
         wifi_phy.Set("RxGain", ns.core.DoubleValue(0))
@@ -90,8 +188,8 @@ class Network:
         # disable rate control
         wifi.SetRemoteStationManager(
             "ns3::ConstantRateWifiManager",
-            "DataMode", ns.core.StringValue(phy_mode),
-            "ControlMode", ns.core.StringValue(phy_mode),
+            "DataMode", ns.core.StringValue(self.phy_mode),
+            "ControlMode", ns.core.StringValue(self.phy_mode),
         )
 
         wifi_mac = ns.wifi.WifiMacHelper()
@@ -129,14 +227,15 @@ class Network:
             callback(message)
 
     def _header2message(self, header, receivers):
+        t_gen = header.GetTimestamp()/10**9
         return Message(
             header.GetSender(),
             receivers=receivers,
-            t_sent=None,
+            t_sent=t_gen,
             data_type_name=self.known_data_types.get_data_type_name(
                 header.GetDataType()),
             data=json.loads(header.GetData()),
-            t_gen=header.GetTimestamp()/10**9,
+            t_gen=t_gen,
             t_rcv=simulator.now_float(),
         )
 
@@ -162,8 +261,7 @@ class Network:
         )
 
     def send(self, message):
-        # packet = ns.network.Packet(60480)
-        packet = ns.network.Packet(2048)
+        packet = ns.network.Packet(self.packet_size)
 
         header = ns.network.InfDistHeader()
         header.SetDataType(
