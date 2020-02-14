@@ -11,6 +11,7 @@ import ns.wifi
 
 from . import simulator
 from optimization.models import Message
+from optimization.network import BaseNetwork
 
 
 class DataTypesStore:
@@ -29,7 +30,7 @@ class DataTypesStore:
         return self.hashes[h]
 
 
-class Network:
+class NS3Network(BaseNetwork):
     DATA_PORT = 4477
     BACKGROUND_PORT = 8082
     AVAILABLE_DATA_RATES = {
@@ -70,6 +71,12 @@ class Network:
             socket.Bind(any_address)
             socket.Connect(broadcast_address)
         self.use_small_packets()
+
+    def serialize(self, native_message):
+        return native_message
+
+    def deserialize(self, message):
+        return message
 
     def add_background_traffic(self, t_start, t_end, throughput):
         """

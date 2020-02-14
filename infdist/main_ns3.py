@@ -35,12 +35,12 @@ def main():
     experiment_clss
     # run_experiment(LimitedThroughputExperiment)
     # run_experiment(DropRateVsUtilityExperiment)
-    run_experiment(GraphMessagesExperiment)
-    run_experiment(MessageSizeExperiment)
-    run_experiment(BytesInWindowGraph)
-    run_experiment(WindowLengthExperiment)
-    run_experiment(TEndExperiment)
-    # run_experiment(PlaygroundExperiment)
+    # run_experiment(GraphMessagesExperiment)
+    # run_experiment(MessageSizeExperiment)
+    # run_experiment(BytesInWindowGraph)
+    # run_experiment(WindowLengthExperiment)
+    # run_experiment(TEndExperiment)
+    run_experiment(PlaygroundExperiment)
 
 
 if __name__ == '__main__':

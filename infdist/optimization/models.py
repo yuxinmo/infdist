@@ -50,7 +50,11 @@ class Message:
     def __eq__(self, other):
         if other is None:
             return False
-        return self.t_gen == other.t_gen and self.sender == other.sender
+        eps = 0.01
+        return (
+            abs(self.t_gen - other.t_gen) < eps and
+            (self.sender == other.sender)
+        )
 
 
 class MessageSet:

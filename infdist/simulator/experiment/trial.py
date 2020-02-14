@@ -6,7 +6,7 @@ from optimization.agent import (
     FullKnowledgeAgent,
 )
 
-from simulator.network import Network
+from simulator.network import NS3Network
 from simulator import simulator
 from optimization import missions, simplesim
 from optimization.models import MessageSet
@@ -143,7 +143,7 @@ class Trial:
     def prepare_network(self):
         if self.net is not None:
             return  # already prepared
-        self.net = Network(self.nodes_num, self.network_data_rate)
+        self.net = NS3Network(self.nodes_num, self.network_data_rate)
 
     def run(self):
         self.prepare_messages()
@@ -159,8 +159,11 @@ class Trial:
 
         for m in self.messages.all():
             # print("Scheduling sending at {} by {}".format(m.t_gen, m.sender))
+            native_message = self.net.serialize(m)
             agent = self.agents[m.sender]
-            simulator.schedule(m.t_gen, agent.gen_generate_message_callback(m))
+            simulator.schedule(m.t_gen, agent.gen_generate_message_callback(
+                native_message
+            ))
 
         simulator.schedule(self.t_end, self.finish_mission)
         simulator.run()

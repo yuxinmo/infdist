@@ -7,6 +7,9 @@ from .models import MessageSet
 
 
 class BaseAgent:
+    ACT_DROP = 0
+    ACT_SEND = 1
+
     def __init__(self, ident, net, messages_context, now_func):
         self.ident = ident
         self.received_messages = MessageSet(0)
@@ -20,16 +23,25 @@ class BaseAgent:
             self.received(message)
         return message_received
 
-    def send(self, m):
-        assert m.sender == self.ident
-        self.net.send(m)
-        m.t_sent = self.now_func()
-        self.sent_messages.append(m)
+    def send(self, native_message, message):
+        assert message.sender == self.ident
+        self.net.send(native_message)
+        message.t_sent = self.now_func()
+        self.sent_messages.append(message)
 
-    def generated(self, m):
+    def generated(self, native_message):
+        message = self.net.deserialize(native_message)
+        result = self.process_message(message)
+        if result == self.ACT_SEND:
+            self.send(native_message, message)
+        elif result != self.ACT_DROP:
+            raise Exception(f"Unknown action {result}")
+
+    def process_message(self, m):
         raise NotImplementedError()
 
-    def received(self, message):
+    def received(self, native_message):
+        message = self.net.deserialize(native_message)
         self.received_messages.append(message)
 
     def gen_generate_message_callback(self, m):
@@ -42,8 +54,8 @@ class BaseAgent:
 
 
 class FullCommAgent(BaseAgent):
-    def generated(self, m):
-        self.send(m)
+    def process_message(self, m):
+        return self.ACT_SEND
 
 
 class FixedRatioAgent(BaseAgent):
@@ -51,9 +63,10 @@ class FixedRatioAgent(BaseAgent):
         self.drop_ratio = kwargs.pop('drop_ratio', 0.5)
         super().__init__(*args, **kwargs)
 
-    def generated(self, m):
+    def process_message(self, m):
         if random.random() > self.drop_ratio:
-            self.send(m)
+            return self.ACT_SEND
+        return self.ACT_DROP
 
 
 class FullKnowledgeAgent(BaseAgent):
@@ -78,23 +91,20 @@ class FullKnowledgeAgent(BaseAgent):
 
         self.active = True
 
-    def send(self, message):
-        super().send(message)
+    def send(self, native_message, message):
+        super().send(native_message, message)
         message_copy = copy(message)
         self.tree.register_message(message_copy)
 
-    def generated(self, message):
+    def process_message(self, message):
         if not self.active:
-            return
-
+            return self.ACT_DROP
         self.tree.progress_time(message.t_gen)
-
         est_sent_message = copy(message)
         est_sent_message.t_sent = self.now_func()
         if self.tree.decide(est_sent_message):
-            self.send(message)
-        else:
-            pass
+            return self.ACT_SEND
+        return self.ACT_DROP
 
     def received(self, message):
         super().received(message)
