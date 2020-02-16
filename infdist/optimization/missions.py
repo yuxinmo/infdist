@@ -3,6 +3,7 @@ import numpy as np
 from .aggregations import AggregationMostRecent
 from .models import MissionContext, MessageSet, Message, InformationType
 from .utilities import UtilityBattery, UtilityPosition
+from .message_forecast import FullKnowledgeTypeForecast
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
@@ -40,7 +41,11 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                            ):
 
     # mi = np.random.normal(0.016, 0.01)
-    mi = np.random.normal(0.2, 0.01)
+    randomized = False
+    if randomized:
+        mi = np.random.normal(0.2, 0.01)
+    else:
+        mi = np.random.normal(0.2, 0.1)
 
     def batt_level(t):
         a = (level_start - level_end) / (t_start - t_end)
@@ -48,7 +53,9 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
         level = a*t+b
         return {
             'battery_level': level,
-            'max_depl_rate': max(0.003, np.random.normal(mi, 0.002))
+            'max_depl_rate': max(
+                0.003, np.random.normal(mi, 0.002)
+            ) if randomized else mi
         }
 
     messages = generate_periodic_messages(
@@ -65,6 +72,10 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                     data_type_name,
                     utility_cls=UtilityBattery,
                     aggregation_cls=AggregationMostRecent,
+                    message_forecast_cls=FullKnowledgeTypeForecast,
+                    message_forecast_kwargs={
+                        'messages': messages,
+                    },
                     weight=np.random.random()*10+0.5
                 )
                 for data_type_name in set(

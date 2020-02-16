@@ -97,6 +97,9 @@ class MessageSet:
     def received_after(self, t):
         return self.all()[self.supremum_idx(t, 't_rcv'):]
 
+    def gen_after(self, t):
+        return self.all()[self.supremum_idx(t, 't_gen'):]
+
     def supremum_idx(self, t, attribute_name='t_gen'):
         """ Implemented using binary search """
         msgs = self.all()
@@ -160,6 +163,8 @@ class MessageSet:
             ]
         if 'received_after' in kwargs:
             msgs = self.received_after(kwargs['received_after'])
+        if 'gen_after' in kwargs:
+            msgs = self.gen_after(kwargs['gen_after'])
         return MessageSet(self.t_end, msgs)
 
     def append(self, message):
@@ -189,12 +194,23 @@ class MessageSet:
 class InformationType:
     __slots__ = (
         'data_type_name', 'utility_cls', 'aggregation', 'weight',
+        'message_forecast_cls', 'message_forecast_kwargs',
     )
 
-    def __init__(self, data_type_name, utility_cls, aggregation_cls, weight=1):
+    def __init__(
+        self,
+        data_type_name,
+        utility_cls,
+        aggregation_cls,
+        message_forecast_cls,
+        message_forecast_kwargs={},
+        weight=1
+    ):
         self.data_type_name = data_type_name
         self.utility_cls = utility_cls
         self.aggregation = aggregation_cls(utility_cls())
+        self.message_forecast_cls = message_forecast_cls
+        self.message_forecast_kwargs = message_forecast_kwargs
         self.weight = weight
 
     def __repr__(self):

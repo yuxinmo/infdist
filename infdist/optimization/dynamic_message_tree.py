@@ -147,6 +147,7 @@ class DynamicMessageTree:
             future_messages,
             self.optimistic_latency,
         )
+        self.future_messages = DynamicMessageSet(reverse=True)
         self.future_messages = self.future_messages.add_messageset(
             future_messages
         )
@@ -194,7 +195,14 @@ class DynamicMessageTree:
 
         while self.montecarlo.root_node.message != message:
             self.montecarlo.root_node = self.montecarlo.make_choice()
-        choice = self.montecarlo.make_choice()
+        try:
+            choice = self.montecarlo.make_choice()
+        except IndexError:
+            print(
+                "WARNING: the message to decide on is not in the tree! "
+                "Not enough simulations? Dropping message."
+            )
+            return False
 
         end_time = datetime.now()
         if self.debug:

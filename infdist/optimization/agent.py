@@ -1,9 +1,10 @@
 from copy import copy, deepcopy
+from itertools import islice
 import random
 
 from .dynamic_message_tree import DynamicMessageTree
-from .copying_message_tree import CopyingMessageTree
 from .models import MessageSet
+from .message_forecast import MessageForecast
 
 
 class BaseAgent:
@@ -27,7 +28,7 @@ class BaseAgent:
         assert message.sender == self.ident
         self.net.send(native_message)
         message.t_sent = self.now_func()
-        self.sent_messages.append(message)
+        self.register_sent(message)
 
     def generated(self, native_message):
         message = self.net.deserialize(native_message)
@@ -42,6 +43,12 @@ class BaseAgent:
 
     def received(self, native_message):
         message = self.net.deserialize(native_message)
+        self.register_received(message)
+
+    def register_sent(self, message):
+        self.sent_messages.append(message)
+
+    def register_received(self, message):
         self.received_messages.append(message)
 
     def gen_generate_message_callback(self, m):
@@ -69,32 +76,21 @@ class FixedRatioAgent(BaseAgent):
         return self.ACT_DROP
 
 
-class FullKnowledgeAgent(BaseAgent):
+class BaseTreeAgent(BaseAgent):
+    DEFAULT_T_END = 60
+
     def __init__(self, *args, **kwargs):
-        all_messages = kwargs.pop('all_messages')
         self.agents = kwargs.pop('agents')
         self.constraints = kwargs.pop('constraints')
         super().__init__(*args, **kwargs)
 
-        if True:
-            self.tree = DynamicMessageTree(
-                all_messages.t_end,
-                self.messages_context,
-                self.constraints,
-            )
-        else:
-            self.tree = CopyingMessageTree(
-                all_messages.t_end,
-                self.messages_context,
-            )
-        self.tree.update_future(deepcopy(all_messages))
+        self.tree = DynamicMessageTree(
+            self.DEFAULT_T_END,
+            self.messages_context,
+            self.constraints,
+        )
 
         self.active = True
-
-    def send(self, native_message, message):
-        super().send(native_message, message)
-        message_copy = copy(message)
-        self.tree.register_message(message_copy)
 
     def process_message(self, message):
         if not self.active:
@@ -106,8 +102,13 @@ class FullKnowledgeAgent(BaseAgent):
             return self.ACT_SEND
         return self.ACT_DROP
 
-    def received(self, message):
-        super().received(message)
+    def register_sent(self, message):
+        super().register_sent(message)
+        message_copy = copy(message)
+        self.tree.register_message(message_copy)
+
+    def register_received(self, message):
+        super().register_received(message)
         message_copy = copy(message)
         message_copy.receivers = (
             set(self.agents.keys()) - set([message_copy.sender])
@@ -115,3 +116,42 @@ class FullKnowledgeAgent(BaseAgent):
         self.tree.register_message(message_copy)
         latency = self.now_func() - message.t_gen
         self.tree.latency = latency
+
+
+class FullKnowledgeAgent(BaseTreeAgent):
+    def __init__(self, *args, **kwargs):
+        all_messages = kwargs.pop('all_messages')
+        super().__init__(*args, **kwargs)
+
+        self.all_messages = all_messages
+
+    def process_message(self, message):
+        self.tree.update_future(deepcopy(self.all_messages))
+        return super().process_message(message)
+
+
+class EstimatingAgent(BaseTreeAgent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.forecast = MessageForecast(self.messages_context)
+
+    def register_sent(self, message):
+        super().register_sent(message)
+        self.forecast.register(message)
+
+    def register_received(self, message):
+        super().register_received(message)
+        self.forecast.register(message)
+
+    def process_message(self, message):
+        future_generator = self.forecast.message_generator(
+            message.t_gen-self.tree.pessymistic_latency
+        )
+
+        self.tree.update_future(
+            MessageSet(
+                t_end=self.forecast.estimate_t_end(),
+                messages=list(islice(future_generator, 2000000))
+            )
+        )
+        return super().process_message(message)

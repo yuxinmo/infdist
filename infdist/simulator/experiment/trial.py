@@ -1,9 +1,9 @@
 from copy import deepcopy
 
 from optimization.agent import (
+    EstimatingAgent,
     FixedRatioAgent,
     FullCommAgent,
-    FullKnowledgeAgent,
 )
 
 from simulator.network import NS3Network
@@ -182,9 +182,8 @@ class TreeTrial(Trial):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.prepare_messages()
-        self.agent_cls = FullKnowledgeAgent
+        self.agent_cls = EstimatingAgent
         self.agent_kwargs = {
-            'all_messages': self.messages,
             'agents': {
                 ident: lambda t: set()
                 for ident in range(self.nodes_num)
