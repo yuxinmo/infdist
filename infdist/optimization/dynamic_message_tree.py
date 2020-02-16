@@ -123,7 +123,7 @@ class DynamicMessageTree:
             elif node.sent_messages.message is not None:
                 current_t = node.sent_messages.message.t_gen
             else:
-                current_t = 0  # nothing was sent during the whole mission
+                current_t = 9E10  # nothing was sent during the whole mission
                 assert new_future is None
 
             node.update_win_value(
@@ -156,6 +156,9 @@ class DynamicMessageTree:
             self.max_utility = self.messages_context.utility(
                 future_messages
             ).value()
+
+    def update_max_utility(self, max_utility):
+        self.max_utility = max_utility
 
     def progress_time(self, t):
         self.future_messages = self.future_messages.received_after(
@@ -220,6 +223,7 @@ class DynamicMessageTree:
         if not getattr(DynamicMessageTree, "DEBUGGED_ONCE", False):
             DynamicMessageTree.DEBUGGED_ONCE = True
             self.show_graph()
+            print(self.verbose_repr())
 
     def debug_once_agents(self):
         self.show_graph()

@@ -12,10 +12,11 @@ from simulator.experiment import (  # NOQA
     PlaygroundExperiment,
 )
 
+# AGENTS_NUM = 10
+#AGENTS_NUM = 2
+#T_END = 3
 AGENTS_NUM = 10
 T_END = 30
-# AGENTS_NUM = 10
-# T_END = 30
 
 
 def run_experiment(experiment_cls):

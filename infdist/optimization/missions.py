@@ -3,7 +3,7 @@ import numpy as np
 from .aggregations import AggregationMostRecent
 from .models import MissionContext, MessageSet, Message, InformationType
 from .utilities import UtilityBattery, UtilityPosition
-from .message_forecast import FullKnowledgeTypeForecast
+from .message_forecast import FullKnowledgeTypeForecast, EmptyTypeForecast  # NOQA
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
@@ -72,9 +72,13 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                     data_type_name,
                     utility_cls=UtilityBattery,
                     aggregation_cls=AggregationMostRecent,
-                    message_forecast_cls=FullKnowledgeTypeForecast,
+                    # message_forecast_cls=FullKnowledgeTypeForecast,
+                    # message_forecast_kwargs={
+                    #     'messages': messages,
+                    # },
+                    message_forecast_cls=EmptyTypeForecast,
                     message_forecast_kwargs={
-                        'messages': messages,
+                        't_end': messages.t_end,
                     },
                     weight=np.random.random()*10+0.5
                 )

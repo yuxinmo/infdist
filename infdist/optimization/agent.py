@@ -145,9 +145,12 @@ class EstimatingAgent(BaseTreeAgent):
 
     def process_message(self, message):
         future_generator = self.forecast.message_generator(
-            message.t_gen-self.tree.pessymistic_latency
+            message.t_gen-self.tree.pessymistic_latency,
+            [message],
         )
 
+        # TODO: set max_utility reasonably
+        self.tree.update_max_utility(8266)
         self.tree.update_future(
             MessageSet(
                 t_end=self.forecast.estimate_t_end(),
