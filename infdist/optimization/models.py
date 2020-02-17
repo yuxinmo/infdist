@@ -167,9 +167,10 @@ class MessageSet:
             msgs = self.gen_after(kwargs['gen_after'])
         return MessageSet(self.t_end, msgs)
 
-    def append(self, message):
+    def append(self, message, keep_order=True):
         self._messages.append(message)
-        self._sort()
+        if keep_order:
+            self._sort()
 
     def remove(self, message):
         self._messages = [

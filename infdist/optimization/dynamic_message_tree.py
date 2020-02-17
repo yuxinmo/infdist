@@ -6,7 +6,7 @@ from montecarlo.node import Node
 from montecarlo.montecarlo import MonteCarlo
 
 from .graph_visualizer import show_graph  # NOQA
-# from .models import MessageSet
+from .models import MessageSet
 from .dynamic_models import DynamicMessageSet
 from .dynamic_models import DynamicTotalUtility
 from . import simplesim
@@ -89,7 +89,7 @@ class TreeNode(Node):
 
 class DynamicMessageTree:
     def __init__(self, t_end, messages_context, constraints):
-        self.past_messages = DynamicMessageSet()
+        self.past_messages = MessageSet(t_end)
         self.future_messages = DynamicMessageSet(reverse=True)
         self.pessymistic_latency = 0.2
         self.optimistic_latency = 0.01
@@ -126,8 +126,11 @@ class DynamicMessageTree:
                 * self.t_end / current_t
             )
         future_messages = self.future_messages
+        dynamic_past_messages = DynamicMessageSet()
+        # past messages are not really used in the tree anymore,
+        # dynamicutility is used. should be refactored
         self.montecarlo = MonteCarlo(TreeNode(
-            deepcopy(self.past_messages),
+            deepcopy(dynamic_past_messages),
             future_messages,
             DynamicTotalUtility(
                 self.t_end,
@@ -147,13 +150,9 @@ class DynamicMessageTree:
             future_messages
         )
 
-        if self.max_utility is None:
-            self.max_utility = self.messages_context.utility(
-                future_messages
-            ).value()
-
-    def update_max_utility(self, max_utility):
-        self.max_utility = max_utility
+        self.max_utility = self.messages_context.utility(
+            self.past_messages + future_messages
+        ).value()
 
     def progress_time(self, t):
         self.future_messages = self.future_messages.received_after(
@@ -171,7 +170,7 @@ class DynamicMessageTree:
             message.t_sent = message.t_gen
         self.future_messages = self.future_messages.tricky_remove(message)
 
-        self.past_messages = self.past_messages.plus(
+        self.past_messages.append(
             message, False
         )
         if self.debug:
