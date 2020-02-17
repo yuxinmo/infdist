@@ -9,7 +9,7 @@ from .graph_visualizer import show_graph  # NOQA
 # from .models import MessageSet
 from .dynamic_models import DynamicMessageSet
 from .dynamic_models import DynamicTotalUtility
-from optimization import simplesim
+from . import simplesim
 
 
 class TreeNode(Node):

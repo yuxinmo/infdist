@@ -4,7 +4,7 @@ class BaseNetwork:
     def deserialize(self, native_message):
         """
         Converts messages native to network format to
-        simulator.models.Message
+        optimization.models.Message
         """
         raise NotImplementedError()
 

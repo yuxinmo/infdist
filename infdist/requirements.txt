@@ -1,1 +1,2 @@
-git@github.com:zeroos/monte-carlo-tree-search.git
+-e git://github.com/zeroos/monte-carlo-tree-search.git#egg=imparaai-montecarlo
+graphviz
