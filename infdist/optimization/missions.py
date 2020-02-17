@@ -3,14 +3,14 @@ import numpy as np
 from .aggregations import AggregationMostRecent
 from .models import MissionContext, MessageSet, Message, InformationType
 from .utilities import UtilityBattery, UtilityPosition
-from .message_forecast import FullKnowledgeTypeForecast, EmptyTypeForecast  # NOQA
+from .message_forecast import FullKnowledgeTypeForecast, PeriodicTypeForecast  # NOQA
 
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
 
 
 def generate_periodic_messages(
-    t_end, senders, receivers, data_type_name,
+    t_end, sender, receivers, data_type_name,
     t_start=0, f=1, data_f=lambda t: {}, sigma_t=0,
     append_sender_to_data_type_name=False,
 ):
@@ -20,32 +20,24 @@ def generate_periodic_messages(
         else:
             return data_type_name
 
-    if receivers is None:
-        receivers = senders
     return MessageSet(t_end, [
         Message(
-            agent_id,
-            set(receivers) - set([agent_id]),
+            sender,
+            set(receivers) - set([sender]),
             abs(np.random.normal(t, sigma_t)),
-            gen_data_type_name(agent_id),
+            gen_data_type_name(sender),
             data_f(t)
         )
-        for agent_id in senders
         for t in np.arange(t_start, t_end, 1/f)
     ], t_start)
 
 
-def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
+def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
                            level_start=1, level_end=0, sigma_t=0,
                            max_depl_rate_mi=0.003, max_depl_rate_sigma=0.002
                            ):
 
-    # mi = np.random.normal(0.016, 0.01)
-    randomized = False
-    if randomized:
-        mi = np.random.normal(0.2, 0.01)
-    else:
-        mi = np.random.normal(0.2, 0.1)
+    mi = np.random.normal(0.2, 0.01)
 
     def batt_level(t):
         a = (level_start - level_end) / (t_start - t_end)
@@ -55,15 +47,40 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
             'battery_level': level,
             'max_depl_rate': max(
                 0.003, np.random.normal(mi, 0.002)
-            ) if randomized else mi
+            )
         }
 
     messages = generate_periodic_messages(
-        t_end, senders, receivers,
+        t_end, sender, receivers,
         BATTERY_DATA_TYPE, t_start, f, batt_level,
         sigma_t,
         append_sender_to_data_type_name=True,
     )
+
+    full_knowledge = False
+    if full_knowledge:
+        forecast_cls = FullKnowledgeTypeForecast
+
+        def forecast_kwargs(data_type_name):
+            return {
+                'data_type_name': data_type_name,
+                'messages': messages,
+            }
+    else:
+        forecast_cls = PeriodicTypeForecast
+
+        def forecast_kwargs(data_type_name):
+            return {
+                'data_type_name': data_type_name,
+                't_end': t_end,
+                'max_depl_rate': mi,
+                'battery_level': level_start,
+                'receivers': receivers,
+                'sender': sender,
+                'initial_t_start': t_start,
+                'T': 1/f,
+            }
+
     return (
         messages,
         MissionContext(
@@ -72,15 +89,9 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
                     data_type_name,
                     utility_cls=UtilityBattery,
                     aggregation_cls=AggregationMostRecent,
-                    # message_forecast_cls=FullKnowledgeTypeForecast,
-                    # message_forecast_kwargs={
-                    #     'messages': messages,
-                    # },
-                    message_forecast_cls=EmptyTypeForecast,
-                    message_forecast_kwargs={
-                        't_end': messages.t_end,
-                    },
-                    weight=np.random.random()*10+0.5
+                    message_forecast_cls=forecast_cls,
+                    message_forecast_kwargs=forecast_kwargs(data_type_name),
+                    weight=np.random.random()*10+0.5,
                 )
                 for data_type_name in set(
                     m.data_type_name
@@ -92,10 +103,10 @@ def generate_batt_messages(t_end, senders, receivers, t_start=0, f=1,
     )
 
 
-def generate_pos_messages(t_end, senders, receivers, t_start=0, f=5,
+def generate_pos_messages(t_end, sender, receivers, t_start=0, f=5,
                           sigma_t=0):
     messages = generate_periodic_messages(
-        t_end, senders, receivers, POSITION_DATA_TYPE, t_start, f,
+        t_end, sender, receivers, POSITION_DATA_TYPE, t_start, f,
         sigma_t,
         append_sender_to_data_type_name=True,
     )
@@ -127,10 +138,9 @@ def generate_simple_3D_reconstruction(
         level_start = np.random.random()
         level_end = level_start * np.random.random()
         messages, context = generate_batt_messages(
-            t_end, {sender}, receivers,
-            # f=(np.random.random()+.2),
+            t_end, sender, receivers,
             f=np.random.normal(1, 0.1),
-            t_start=np.random.random(),
+            t_start=int(np.random.random()*100)/100,
             level_start=level_start,
             level_end=level_end,
             sigma_t=sigma_t

@@ -13,8 +13,6 @@ from simulator.experiment import (  # NOQA
 )
 
 # AGENTS_NUM = 10
-#AGENTS_NUM = 2
-#T_END = 3
 AGENTS_NUM = 10
 T_END = 30
 

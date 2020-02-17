@@ -150,7 +150,7 @@ class EstimatingAgent(BaseTreeAgent):
         )
 
         # TODO: set max_utility reasonably
-        self.tree.update_max_utility(8266)
+        self.tree.update_max_utility(9404)
         self.tree.update_future(
             MessageSet(
                 t_end=self.forecast.estimate_t_end(),

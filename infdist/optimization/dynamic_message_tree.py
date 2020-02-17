@@ -118,13 +118,8 @@ class DynamicMessageTree:
 
             if node.message is not None:
                 current_t = node.message.t_gen
-            elif node.future_messages.message is not None:
-                current_t = node.future_messages.message.t_gen
-            elif node.sent_messages.message is not None:
-                current_t = node.sent_messages.message.t_gen
             else:
-                current_t = 9E10  # nothing was sent during the whole mission
-                assert new_future is None
+                current_t = node.parent.message.t_gen
 
             node.update_win_value(
                 node.dynamic_utility.value()/self.max_utility
