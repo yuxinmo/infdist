@@ -145,6 +145,13 @@ class Trial:
             return  # already prepared
         self.net = NS3Network(self.nodes_num, self.network_data_rate)
 
+    def print_progress(self):
+        print(
+            f"  {self.now_func():.02f}s "
+            f"({self.now_func()/self.t_end*100:.02f}%)",
+            end="\r"
+        )
+
     def run(self):
         self.prepare_messages()
         self.prepare_network()
@@ -164,6 +171,11 @@ class Trial:
             simulator.schedule(m.t_gen, agent.gen_generate_message_callback(
                 native_message
             ))
+
+            simulator.schedule(
+                m.t_gen,
+                self.print_progress
+            )
 
         simulator.schedule(self.t_end, self.finish_mission)
         simulator.run()

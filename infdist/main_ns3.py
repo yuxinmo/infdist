@@ -13,8 +13,8 @@ from simulator.experiment import (  # NOQA
 )
 
 # AGENTS_NUM = 10
-AGENTS_NUM = 10
-T_END = 30
+AGENTS_NUM = 3
+T_END = 2010
 
 
 def run_experiment(experiment_cls):
