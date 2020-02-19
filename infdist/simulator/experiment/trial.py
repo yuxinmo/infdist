@@ -13,9 +13,10 @@ from optimization.models import MessageSet
 
 
 class Trial:
-    def __init__(self, nodes_num, t_end):
+    def __init__(self, nodes_num, t_end, msgset):
         self.nodes_num = nodes_num
         self.t_end = t_end
+        self.msgset = msgset
         self.agent_cls = FullCommAgent
         self.agent_kwargs = {}
         self.messages = None
@@ -60,6 +61,8 @@ class Trial:
         simplesim.latency(all_messages, 0)
 
         return {
+            'no_duplicates': no_duplicates,
+            'all_received_messages': self.all_received_messages(),
             'received_num': sum(
                 [len(agent.received_messages) for agent in self.agents]
             ),
@@ -73,6 +76,7 @@ class Trial:
             'constraints': constraints,
             'max_utility': self.ctx.utility(all_messages).value(),
             'avg_latency': avg_latency,
+            'context': self.ctx,
         }
 
     def all_received_messages(self):
@@ -126,7 +130,9 @@ class Trial:
             assert self.ctx is not None
             return  # already prepared
         self.messages, self.ctx = missions.generate_simple_3D_reconstruction(
-            self.t_end, senders=set(range(self.nodes_num)),
+            self.t_end,
+            msgset=self.msgset,
+            senders=set(range(self.nodes_num)),
         )
 
     def prepare_agents(self):
@@ -233,9 +239,9 @@ class TreeTrial(Trial):
 
     def set_drop_rate(self, drop_rate):
         assert not self.drop_rate_set
-        timeslot_length = 3.5
+        timeslot_length = 2.5
         avg_msgs_per_second = len(self.messages)/self.t_end
         self.add_msgnum_constraint(
-                (1-drop_rate)*(timeslot_length+1)*avg_msgs_per_second,
+                (1-drop_rate)*(timeslot_length)*avg_msgs_per_second,
                 timeslot_length
         )

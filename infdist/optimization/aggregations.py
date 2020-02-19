@@ -39,7 +39,10 @@ class AggregationMostRecent(Aggregation):
             m, m.t_rcv, min(next_m.t_rcv, t_end)
         )
 
-    def integrate(self, messages):
+    def integrate(self, messages, debug_weight=1):
+        """
+        TODO: weight si only used for debugging, remove it
+        """
         result = 0
         msgs = messages.all()
         if not msgs:
@@ -48,7 +51,11 @@ class AggregationMostRecent(Aggregation):
         t_end = messages.t_end
 
         for m, next_m in zip(msgs[:-1], msgs[1:]):
-            result += self._integration_step(m, next_m, t_end)
+            gain = self._integration_step(m, next_m, t_end)
+            m.gained_utility(
+                gain*debug_weight/(min(next_m.t_rcv, t_end)-m.t_rcv)
+            )
+            result += gain
         result += self.utility_func.integrate(msgs[-1], msgs[-1].t_rcv, t_end)
         return result
 

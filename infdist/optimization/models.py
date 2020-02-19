@@ -4,7 +4,7 @@ from types import SimpleNamespace
 class Message:
     __slots__ = (
         'sender', 'receivers', 't_gen', 't_sent', 't_rcv', 'data_type_name',
-        'data',
+        'data', 'gained_value',
     )
 
     def __init__(self, sender, receivers, t_gen,
@@ -17,6 +17,14 @@ class Message:
         self.t_rcv = t_rcv
         self.data_type_name = data_type_name
         self.data = SimpleNamespace(**data)
+
+    def gained_utility(self, value):
+        """
+        Registers that this message achieved 'value' utility.
+        Storing value somewhere with the massege might by handy for analyzing
+        results, but maybe normally should be turned off.
+        """
+        self.gained_value = value
 
     def __hash__(self):
         return hash((
@@ -243,7 +251,8 @@ class MissionContext:
 
     def utility_type(self, messages, msg_type):
         return msg_type.weight * msg_type.aggregation.integrate(
-            messages.filter(data_type=msg_type.data_type_name)
+            messages.filter(data_type=msg_type.data_type_name),
+            msg_type.weight,
         )
 
     def utility_by_type(self, messages):

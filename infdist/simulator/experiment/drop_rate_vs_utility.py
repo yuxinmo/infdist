@@ -1,4 +1,5 @@
 import plotly.graph_objs as go
+import numpy as np
 
 from .base_experiment import BaseExperiment
 from .trial import FixedRatioTrial, TreeTrial
@@ -11,12 +12,12 @@ def avg(l):
 class DropRateVsUtilityExperiment(BaseExperiment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        drop_rates_num = 20
+        drop_rates_num = 10
         self.drop_rates = [
             i/drop_rates_num
             for i in range(drop_rates_num+1)
         ]
-        self.repeats = 3
+        self.repeats = 1
         self.trial_cls = None
         self.trial_clss = [FixedRatioTrial, TreeTrial]
 
@@ -112,5 +113,71 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 for trial_name in [
                     trial_cls.__name__ for trial_cls in self.trial_clss
                 ]
-            ], [])
+            ], []),
+            'histogram_fixed': self.get_message_utility_histogram(),
+            'histogram_tree': self.get_message_utility_histogram('TreeTrial'),
         }
+
+    def _prepare_histogram_data(
+        self, stat,
+    ):
+        ctx = stat['context']
+        utility = ctx.utility(stat['all_received_messages']).value()
+        utility
+        gained_values = [
+            getattr(m, 'gained_value')
+            for m in stat['all_received_messages'].all()
+            if hasattr(m, 'gained_value')
+        ]
+        normalized_data = [
+            v  # / max(gained_values)
+            for v in gained_values
+        ]
+        return normalized_data
+
+    def _get_single_gained_value_histogram(
+        self, trial_name, drop_rate, try_num
+    ):
+        stat = self.result[trial_name][drop_rate][try_num]
+        normalized_data = self._prepare_histogram_data(stat)
+        achieved_drop_rate = (
+            1-(stat['sent_received_num']/stat['total_messages'])
+        )
+        return go.Histogram(
+            # nbinsx=7,
+            x=normalized_data,
+            histnorm='probability',
+            name=f"{trial_name} {achieved_drop_rate:.02f}",
+        )
+
+    def get_message_utility_histogram(self, trial_name='FixedRatioTrial'):
+        # return self._multiple_histograms_on_one(trial_name)
+        return self._single_histogram(trial_name)
+
+    def _single_histogram(self, trial_name):
+        data = []
+        for drop_rate in self.result[trial_name].keys():
+            stat = self.result[trial_name][drop_rate][0]
+            normalized_data = self._prepare_histogram_data(stat)
+            data = data + normalized_data
+        return np.var(data), [go.Histogram(
+            # nbinsx=7,
+            x=data,
+            histnorm='probability',
+            name=f"{trial_name}",
+        )]
+
+    def _multiple_histograms_on_one(self, trial_name):
+        graphs = [
+            self._get_single_gained_value_histogram(
+                trial_name, drop_rate, 0
+            )
+            for drop_rate in self.result[trial_name].keys()
+        ]
+        fig = go.Figure()
+        for g in graphs:
+            fig.add_trace(g)
+        fig.update_layout(barmode='overlay')
+        fig.update_traces(opacity=0.3)
+
+        return fig

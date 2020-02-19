@@ -16,4 +16,8 @@ class GraphMessagesExperiment(BaseExperiment):
         msgs = self.result.messages
         mission_context = self.result.ctx
         simplesim.latency(msgs, 0)
-        write_messageset_plots(msgs, mission_context, '/tmp/plots')
+        write_messageset_plots(
+            msgs,
+            mission_context,
+            f'/tmp/plots/{self.agents_num}_{self.t_end}_{self.msgset}-',
+        )

@@ -1,3 +1,4 @@
+import pickle
 import plotly.graph_objs as go
 import plotly.io as pio
 from datetime import datetime
@@ -10,16 +11,17 @@ class BaseExperiment:
     DEBUG_PROGRESS = 1
     DEBUG_ALL = 2
 
-    def __init__(self, agents_num, t_end):
+    def __init__(self, agents_num, t_end, msgset):
         self.agents_num = agents_num
         self.t_end = t_end
+        self.msgset = msgset
         self.trial_cls = TreeTrial
         self._example_trial = None
 
     def prepare_trial(self, trial_cls=None):
         if trial_cls is None:
             trial_cls = self.trial_cls
-        t = trial_cls(self.agents_num, self.t_end)
+        t = trial_cls(self.agents_num, self.t_end, self.msgset)
         return t
 
     def progress(self, percent, debug, start_time=None):
@@ -35,7 +37,7 @@ class BaseExperiment:
             else:
                 eta = '?'
                 to_go = '?'
-            print('  {:.2f}% ETA: {} (in {})'.format(
+            print('\t\t\t\t{:.2f}% ETA: {} (in {})'.format(
                 percent, eta, to_go,
             ), end='\r')
 
@@ -66,10 +68,21 @@ class BaseExperiment:
             yaxis_title=self.get_graph_yaxis_title(graph_name),
         )
 
+    def save_results(self, filename):
+        pickle.dump(
+            self.result,
+            open(filename, 'wb')
+        )
+
     def save_graphs(self, f=None):
         for graph_name, graph in self.get_graphs().items():
-            fig = go.Figure({'data': graph, 'title': "test"})
-            self._set_figure_layout(graph_name, fig)
+            if type(graph) is list:
+                fig = go.Figure({'data': graph, 'title': "test"})
+                self._set_figure_layout(graph_name, fig)
+            elif type(graph) is go.Figure:
+                fig = graph
+            else:
+                raise Exception("Unknown graph type")
             pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))
             if f is not None:
                 pio.write_image(fig, f.format(graph_name))
