@@ -98,6 +98,7 @@ class DynamicMessageTree:
         self.t_end = t_end
         self.debug = True
         self.constraints = constraints
+        self.limit_history = -1
 
     @property
     def latency(self):
@@ -121,16 +122,18 @@ class DynamicMessageTree:
             else:
                 current_t = node.parent.message.t_gen
 
+            if current_t < 0.01:
+                current_t = 0.01
+
             node.update_win_value(
                 node.dynamic_utility.value()/self.max_utility
                 * self.t_end / current_t
             )
         future_messages = self.future_messages
-        dynamic_past_messages = DynamicMessageSet()
         # past messages are not really used in the tree anymore,
         # dynamicutility is used. should be refactored
         self.montecarlo = MonteCarlo(TreeNode(
-            deepcopy(dynamic_past_messages),
+            DynamicMessageSet(),
             future_messages,
             DynamicTotalUtility(
                 self.t_end,
@@ -164,11 +167,15 @@ class DynamicMessageTree:
             message.t_rcv = message.t_gen + self.optimistic_latency
         if message.t_sent is None:
             message.t_sent = message.t_gen
-        self.future_messages = self.future_messages.tricky_remove(message)
+        # self.future_messages = self.future_messages.tricky_remove(message)
 
         self.past_messages.append(
             message, False
         )
+        if self.limit_history:
+            self.past_messages._messages = (
+                self.past_messages._messages[-self.limit_history:]
+            )
 
     def decide(self, message):
         start_time = datetime.now()

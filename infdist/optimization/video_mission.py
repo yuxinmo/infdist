@@ -43,7 +43,7 @@ def generate_mission_context(agents, data_types, t_end, T):
 def generate_example_video_mission(
     agents, t_end,
 ):
-    T = 1
+    T = 0.2
     data_type_name = "video"
     ctx = generate_mission_context(agents, [data_type_name], t_end, T)
     msgs = MessageSet(t_end, [])

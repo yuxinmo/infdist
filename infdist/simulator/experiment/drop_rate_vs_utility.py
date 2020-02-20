@@ -1,6 +1,7 @@
-import plotly.graph_objs as go
 import numpy as np
+import plotly.graph_objs as go
 from scipy.stats import skew
+from statsmodels.distributions.empirical_distribution import ECDF
 
 from .base_experiment import BaseExperiment
 from .trial import FixedRatioTrial, TreeTrial
@@ -18,7 +19,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             i/drop_rates_num
             for i in range(drop_rates_num+1)
         ]
-        self.repeats = 1
+        self.repeats = [10, 3]
         self.trial_cls = None
         self.trial_clss = [FixedRatioTrial, TreeTrial]
 
@@ -46,7 +47,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 )
 
                 result[trial_name][drop_rate] = []
-                for i in range(self.repeats):
+                for i in range(self.repeats[trial_i]):
                     t = self.prepare_trial(trial_cls, drop_rate)
                     t.run()
                     result[trial_name][drop_rate].append(t.stats())
@@ -117,6 +118,8 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             ], []),
             'histogram_fixed': self.get_message_utility_histogram(),
             'histogram_tree': self.get_message_utility_histogram('TreeTrial'),
+            'cdf_fixed': self.get_message_utility_cdf(),
+            'cdf_tree': self.get_message_utility_cdf('TreeTrial'),
         }
 
     def _prepare_histogram_data(
@@ -154,6 +157,30 @@ class DropRateVsUtilityExperiment(BaseExperiment):
     def get_message_utility_histogram(self, trial_name='FixedRatioTrial'):
         # return self._multiple_histograms_on_one(trial_name)
         return self._single_histogram(trial_name)
+
+    def get_message_utility_cdf(self, trial_name='FixedRatioTrial'):
+        return self._single_cdf(trial_name)
+
+    def _single_cdf(self, trial_name):
+        data = []
+        for drop_rate in self.result[trial_name].keys():
+            for stat in self.result[trial_name][drop_rate]:
+                data += self._prepare_histogram_data(stat)
+        data = [
+            v  # / max(data)
+            for v in data
+        ]
+        ecdf = ECDF(data)
+        plot = [go.Scatter(
+            x=np.unique(data),
+            y=ecdf(np.unique(data)),
+            line_shape='hv',
+        )]
+        fig = go.Figure(data=plot)
+        fig.update_layout(
+            title=f"{trial_name} {np.var(data)} {skew(data)}"
+        )
+        return fig
 
     def _single_histogram(self, trial_name):
         data = []

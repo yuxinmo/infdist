@@ -82,6 +82,7 @@ class BaseTreeAgent(BaseAgent):
     def __init__(self, *args, **kwargs):
         self.agents = kwargs.pop('agents')
         self.constraints = kwargs.pop('constraints')
+        limit_history = kwargs.pop('limit_history', 0)
         super().__init__(*args, **kwargs)
 
         self.tree = DynamicMessageTree(
@@ -89,6 +90,7 @@ class BaseTreeAgent(BaseAgent):
             self.messages_context,
             self.constraints,
         )
+        self.tree.limit_history = limit_history
 
         self.active = True
 
