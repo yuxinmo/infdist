@@ -26,7 +26,6 @@ class BaseAgent:
 
     def send(self, native_message, message):
         assert message.sender == self.ident
-        print('sending')
         self.net.send(native_message)
         message.t_sent = self.now_func()
         self.register_sent(message)

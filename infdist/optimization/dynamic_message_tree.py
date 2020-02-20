@@ -202,9 +202,6 @@ class DynamicMessageTree:
 
         if message in choice.sent_messages.all():
             return True
-
-        if len(self.montecarlo.root_node.future_messages) < 10:
-            self.debug_once()
         return False
 
     def debug_once(self):
