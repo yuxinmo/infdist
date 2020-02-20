@@ -6,7 +6,7 @@ from infdist.optimization.models import Message
 
 class ROS2NativeMessage:
     def __init__(self, msg, sender, receivers, data_type_name,
-                 data, t_rcv=None, publisher=None, stamp=None):
+                 data, stamp, t_rcv=None, publisher=None):
         self.msg = msg
         self.sender = sender
         self.publisher = publisher
