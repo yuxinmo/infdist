@@ -55,7 +55,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         self.result = result
 
     def print_result(self):
-        print(self.result)
+        print("Plot graphs to see results")
 
     def _get_single_result_graph(self, results, name, xs_func, ys_func):
         xs = [

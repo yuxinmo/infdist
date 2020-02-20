@@ -206,7 +206,8 @@ class TreeTrial(Trial):
                 ident: lambda t: set()
                 for ident in range(self.nodes_num)
             },
-            'constraints': {}
+            'constraints': {},
+            'window_size': 1000,
         }
         self.drop_rate_set = False
         self.throughput_set = False
@@ -220,6 +221,7 @@ class TreeTrial(Trial):
         self.agent_kwargs['constraints'] = value
 
     def add_msgnum_constraint(self, messages_num, timeslot_length):
+        self.agent_kwargs['window_size'] = timeslot_length
         self.constraints = {
             'MSGNUM': simplesim.create_msgnum_constraint_violations(
                 messages_num, timeslot_length
@@ -227,6 +229,7 @@ class TreeTrial(Trial):
         }
 
     def add_throughput_constraint(self, throughput, timeslot_length):
+        self.agent_kwargs['window_size'] = timeslot_length
         message_size = self.net.packet_size
         self.constraints = {
             'TPUT': simplesim.create_throughput_constraint_violations(

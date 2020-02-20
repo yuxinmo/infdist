@@ -12,7 +12,6 @@ from simulator.experiment import (  # NOQA
     PlaygroundExperiment,
 )
 
-# AGENTS_NUM = 10
 AGENTS_NUM = 4
 T_END = 10
 MSGSETS = range(3)
@@ -27,8 +26,10 @@ def run_experiment(experiment_cls):
         experiment = experiment_cls(AGENTS_NUM, T_END, msgset)
         experiment.run(debug=2)
         experiment.save_graphs(
-            f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset}' + '_{}.pdf')
-        experiment.save_results(get_results_filename(msgset))
+            f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset}' + '_{}.pdf'
+        )
+        experiment.print_result()
+        # experiment.save_results(get_results_filename(msgset))
 
         plots = GraphMessagesExperiment(AGENTS_NUM, T_END, msgset)
         plots.run()

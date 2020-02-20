@@ -96,7 +96,7 @@ class DynamicMessageTree:
         self.messages_context = messages_context
         self.max_utility = None
         self.t_end = t_end
-        self.debug = False
+        self.debug = True
         self.constraints = constraints
 
     @property
@@ -178,14 +178,12 @@ class DynamicMessageTree:
         self.montecarlo.simulate(200)
         simulate_time = datetime.now()
 
-        # if len(self.montecarlo.root_node.future_messages) < 8:
-        #     print("Debugging!")
+        # if len(self.montecarlo.root_node.future_messages) < 5:
         #     self.debug_once()
-        #     print("Your turn to debug!")
 
-        while self.montecarlo.root_node.message != message:
-            self.montecarlo.root_node = self.montecarlo.make_choice()
         try:
+            while self.montecarlo.root_node.message != message:
+                self.montecarlo.root_node = self.montecarlo.make_choice()
             choice = self.montecarlo.make_choice()
         except IndexError:
             print(
@@ -208,9 +206,11 @@ class DynamicMessageTree:
 
     def debug_once(self):
         if not getattr(DynamicMessageTree, "DEBUGGED_ONCE", False):
+            print("Debugging!")
             DynamicMessageTree.DEBUGGED_ONCE = True
             self.show_graph()
             print(self.verbose_repr())
+            print("Your turn to debug!")
 
     def debug_once_agents(self):
         self.show_graph()
@@ -228,14 +228,15 @@ class DynamicMessageTree:
         show_graph(node)
 
     def verbose_repr(self):
+        fields = ['sender', 't_sent', 't_rcv', 'data_type_name']
         return (
             "####\n"
             "Past:\n {}\n"
             "Future:\n {}\n"
             "----\n"
         ).format(
-            self.past_messages.__str__(['t_sent', 't_rcv']),
-            self.future_messages.__str__(['t_sent', 't_rcv']),
+            self.past_messages.__str__(fields),
+            self.future_messages.__str__(fields),
         )
 
     def __str__(self):

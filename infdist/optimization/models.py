@@ -279,3 +279,10 @@ class MissionContext:
         return MissionContext(
             self.message_types.union(other.message_types)
         )
+
+    def __str__(self):
+        return (
+            "<MissionContext>" +
+            '\n\t'.join([str(typ) for typ in self.message_types]) +
+            "</MissionContext>"
+        )

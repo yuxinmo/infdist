@@ -26,7 +26,6 @@ class BaseAgent:
 
     def send(self, native_message, message):
         assert message.sender == self.ident
-        print('sending')
         self.net.send(native_message)
         message.t_sent = self.now_func()
         self.register_sent(message)
@@ -133,6 +132,7 @@ class FullKnowledgeAgent(BaseTreeAgent):
 
 class EstimatingAgent(BaseTreeAgent):
     def __init__(self, *args, **kwargs):
+        self.window_size = kwargs.pop('window_size')
         super().__init__(*args, **kwargs)
         self.forecast = MessageForecast(self.messages_context)
 
@@ -146,7 +146,10 @@ class EstimatingAgent(BaseTreeAgent):
 
     def process_message(self, message):
         future_generator = self.forecast.message_generator(
-            message.t_gen-self.tree.pessymistic_latency,
+            message.t_gen-min(
+                self.tree.pessymistic_latency,
+                self.window_size
+            ),
             [message],
         )
 
