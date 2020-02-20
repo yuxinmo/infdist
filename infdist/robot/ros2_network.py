@@ -6,7 +6,7 @@ from infdist.optimization.models import Message
 
 class ROS2NativeMessage:
     def __init__(self, msg, sender, receivers, data_type_name,
-                 data, t_rcv=None, publisher=None):
+                 data, t_rcv=None, publisher=None, stamp=None):
         self.msg = msg
         self.sender = sender
         self.publisher = publisher
@@ -14,14 +14,17 @@ class ROS2NativeMessage:
         self.t_rcv = t_rcv
         self.data_type_name = data_type_name
         self.data = data
+        self.stamp = stamp
 
 
 class ROS2Network(BaseNetwork):
     def deserialize(self, native_message):
-        t_gen = (
-            native_message.msg.header.stamp.sec +
-            native_message.msg.header.stamp.nanosec * 1e-9
-        )
+        # if native_message.msg:
+        #     t_gen = (
+        #         native_message.msg.header.stamp.sec +
+        #         native_message.msg.header.stamp.nanosec * 1e-9
+        #     )
+        t_gen = native_message.stamp
         return Message(
             sender=native_message.sender,
             receivers=native_message.receivers,

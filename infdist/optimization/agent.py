@@ -26,6 +26,7 @@ class BaseAgent:
 
     def send(self, native_message, message):
         assert message.sender == self.ident
+        print('sending')
         self.net.send(native_message)
         message.t_sent = self.now_func()
         self.register_sent(message)
@@ -152,7 +153,7 @@ class EstimatingAgent(BaseTreeAgent):
         self.tree.update_future(
             MessageSet(
                 t_end=self.forecast.estimate_t_end(),
-                messages=list(islice(future_generator, 2000000))
+                messages=list(islice(future_generator, 30))
             )
         )
         return super().process_message(message)
