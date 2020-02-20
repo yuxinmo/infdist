@@ -133,6 +133,7 @@ class FullKnowledgeAgent(BaseTreeAgent):
 
 class EstimatingAgent(BaseTreeAgent):
     def __init__(self, *args, **kwargs):
+        self.window_size = kwargs.pop('window_size')
         super().__init__(*args, **kwargs)
         self.forecast = MessageForecast(self.messages_context)
 
@@ -146,7 +147,10 @@ class EstimatingAgent(BaseTreeAgent):
 
     def process_message(self, message):
         future_generator = self.forecast.message_generator(
-            message.t_gen-self.tree.pessymistic_latency,
+            message.t_gen-min(
+                self.tree.pessymistic_latency,
+                self.window_size
+            ),
             [message],
         )
 
