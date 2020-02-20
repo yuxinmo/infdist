@@ -160,10 +160,6 @@ class DynamicMessageTree:
         )
 
     def register_message(self, message):
-        if self.debug:
-            print(message)
-            print(self.past_messages)
-
         if message.t_rcv is None:
             message.t_rcv = message.t_gen + self.optimistic_latency
         if message.t_sent is None:
@@ -173,9 +169,6 @@ class DynamicMessageTree:
         self.past_messages.append(
             message, False
         )
-        if self.debug:
-            print(self.past_messages)
-            print("-----")
 
     def decide(self, message):
         start_time = datetime.now()
