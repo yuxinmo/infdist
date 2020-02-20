@@ -1,5 +1,6 @@
 import plotly.graph_objs as go
 import numpy as np
+from scipy.stats import skew
 
 from .base_experiment import BaseExperiment
 from .trial import FixedRatioTrial, TreeTrial
@@ -107,7 +108,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         return {
             self.get_graph_name(): sum([
                 [
-                    g[trial_name]['set'],
+                    # g[trial_name]['set'],
                     g[trial_name]['achieved'],
                 ]
                 for trial_name in [
@@ -160,12 +161,21 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             stat = self.result[trial_name][drop_rate][0]
             normalized_data = self._prepare_histogram_data(stat)
             data = data + normalized_data
-        return np.var(data), [go.Histogram(
+        data = [
+            v  # / max(data)
+            for v in data
+        ]
+        plot = [go.Histogram(
             # nbinsx=7,
             x=data,
             histnorm='probability',
             name=f"{trial_name}",
         )]
+        fig = go.Figure(data=plot)
+        fig.update_layout(
+            title=f"{trial_name} {np.var(data)} {skew(data)}"
+        )
+        return fig
 
     def _multiple_histograms_on_one(self, trial_name):
         graphs = [
