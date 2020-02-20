@@ -19,10 +19,10 @@ presets = [
         'max_depl_rate_mi': lambda: np.random.normal(0.2, 0.01),
         'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
         't_gen': lambda t: abs(np.random.normal(t, 0.001)),
-        'topic_weight': lambda i: (i+1)*10,
+        'topic_weight': lambda i: (i+1)*100,
     },
     {
-        'max_depl_rate_mi': lambda: 0.3,
+        'max_depl_rate_mi': lambda: 0.7,
         'max_depl_rate': lambda mi: mi,
         't_gen': lambda t: t,
         'topic_weight': lambda i: 1,
