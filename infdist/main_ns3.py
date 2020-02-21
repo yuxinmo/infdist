@@ -15,7 +15,6 @@ from simulator.experiment import (  # NOQA
 AGENTS_NUM = 4
 T_END = 10
 MSGSETS = range(3)
-MSGSETS = range(1)
 
 
 def get_results_filename(msgset):

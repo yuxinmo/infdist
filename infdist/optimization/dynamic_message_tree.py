@@ -1,4 +1,4 @@
-from copy import deepcopy, copy
+from copy import copy
 from datetime import datetime
 
 
@@ -12,12 +12,18 @@ from .dynamic_models import DynamicTotalUtility
 from . import simplesim
 
 
-class TreeNode(Node):
-    def __init__(
-        self, sent_messages, future_messages, dynamic_utility, constraints
+class TreeNodeWrapper:
+    def __init__(self, node):
+        self.state = node.state
+        self.node = node
+
+    @staticmethod
+    def create(
+        sent_messages, future_messages, dynamic_utility, constraints
     ):
-        super().__init__((sent_messages, future_messages, dynamic_utility))
-        self.constraints = constraints
+        return Node(
+            (sent_messages, future_messages, dynamic_utility, constraints)
+        )
 
     @property
     def sent_messages(self):
@@ -30,6 +36,10 @@ class TreeNode(Node):
     @property
     def dynamic_utility(self):
         return self.state[2]
+
+    @property
+    def constraints(self):
+        return self.state[3]
 
     @property
     def message(self):
@@ -45,29 +55,22 @@ class TreeNode(Node):
             if constraint(new_sent) > 0:
                 return
 
-        positive_child = TreeNode(
+        positive_child = TreeNodeWrapper.create(
             new_sent,
             new_future,
             self.dynamic_utility.plus(self.message),
             self.constraints
         )
-        positive_child.update_policy_value(
-            1  # probability that win value in this state is correct
-            # we could probably relate it somehow to network utilization
-        )
-        self.add_child(positive_child)
+        self.node.add_child(positive_child)
 
     def create_negative_child(self, new_future):
-        negative_child = TreeNode(
+        negative_child = TreeNodeWrapper.create(
             self.sent_messages,
             new_future,
             self.dynamic_utility,
             self.constraints,
         )
-        negative_child.update_policy_value(
-            1  # probability that win value in this state is correct
-        )
-        self.add_child(negative_child)
+        self.node.add_child(negative_child)
 
     def __str__(self):
         return (
@@ -110,7 +113,8 @@ class DynamicMessageTree:
         self.optimistic_latency = latency / 2
 
     def reinit_mcts(self, message):
-        def _child_finder(node, mc):
+        def _child_finder(real_node, mc):
+            node = TreeNodeWrapper(real_node)
             new_future = node.future_messages._tail
 
             if node.future_messages.message:
@@ -120,19 +124,19 @@ class DynamicMessageTree:
             if node.message is not None:
                 current_t = node.message.t_gen
             else:
-                current_t = node.parent.message.t_gen
+                current_t = TreeNodeWrapper(real_node.parent).message.t_gen
 
             if current_t < 0.01:
                 current_t = 0.01
 
-            node.update_win_value(
+            real_node.update_win_value(
                 node.dynamic_utility.value()/self.max_utility
                 * self.t_end / current_t
             )
         future_messages = self.future_messages
         # past messages are not really used in the tree anymore,
         # dynamicutility is used. should be refactored
-        self.montecarlo = MonteCarlo(TreeNode(
+        self.montecarlo = MonteCarlo(TreeNodeWrapper.create(
             DynamicMessageSet(),
             future_messages,
             DynamicTotalUtility(
@@ -189,7 +193,9 @@ class DynamicMessageTree:
         #     self.debug_once()
 
         try:
-            while self.montecarlo.root_node.message != message:
+            while (
+                TreeNodeWrapper(self.montecarlo.root_node).message != message
+            ):
                 self.montecarlo.root_node = self.montecarlo.make_choice()
             choice = self.montecarlo.make_choice()
         except IndexError:
@@ -207,7 +213,7 @@ class DynamicMessageTree:
                 end_time - start_time,
             ))
 
-        if message in choice.sent_messages.all():
+        if message in TreeNodeWrapper(choice).sent_messages.all():
             return True
         return False
 
