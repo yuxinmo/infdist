@@ -14,13 +14,19 @@ def latency(msgs, latency):
 
 
 def create_msgnum_constraint_violations(msgnum=9, timeslot=2.7):
-    def msgnum_constraint_violations(msgs):
+    def msgnum_constraint_violations(messageset, incremental=False):
         """
         Returns the number of times the msgnum constraint is violated.
         """
         window = deque()
         result = 0
-        for m in msgs.all():
+        if incremental:
+            msgs = messageset.msgs_gen_after(
+                messageset.message.t_gen - timeslot
+            )
+        else:
+            msgs = messageset.all()
+        for m in msgs:
             window.append(m)
             while m.t_sent - window[0].t_sent > timeslot:
                 window.popleft()
@@ -37,10 +43,14 @@ def create_throughput_constraint_violations(throughput, timeslot,
     :param message_size: message size in bytes
     """
 
-    def throughput_constraint_violations(msgs):
+    def throughput_constraint_violations(msgs, incremental=False):
         """
         Returns the number of times the throughput constraint is violated.
         """
+        if incremental:
+            raise NotImplementedError(
+                "Incremental throughput constraint not implemented"
+            )
         window = deque()
         result = 0
         throughput_in_bytes = (timeslot*throughput/8)*10**6

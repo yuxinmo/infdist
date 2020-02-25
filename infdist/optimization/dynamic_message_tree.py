@@ -52,7 +52,7 @@ class TreeNodeWrapper:
         # message.t_rcv = message.t_gen
         new_sent = self.sent_messages.plus(message, False)
         for constraint in self.constraints.values():
-            if constraint(new_sent) > 0:
+            if constraint(new_sent, True) > 0:
                 return
 
         positive_child = TreeNodeWrapper.create(
@@ -99,7 +99,7 @@ class DynamicMessageTree:
         self.messages_context = messages_context
         self.max_utility = None
         self.t_end = t_end
-        self.debug = True
+        self.debug = False
         self.constraints = constraints
         self.limit_history = -1
 
@@ -110,7 +110,7 @@ class DynamicMessageTree:
     @latency.setter
     def latency(self, latency):
         self.pessymistic_latency = latency
-        self.optimistic_latency = latency / 2
+        self.optimistic_latency = latency
 
     def reinit_mcts(self, message):
         def _child_finder(real_node, mc):
@@ -134,10 +134,10 @@ class DynamicMessageTree:
                 * self.t_end / current_t
             )
         future_messages = self.future_messages
-        # past messages are not really used in the tree anymore,
-        # dynamicutility is used. should be refactored
+        past_messages = DynamicMessageSet()
+        past_messages = past_messages.add_messageset(self.past_messages)
         self.montecarlo = MonteCarlo(TreeNodeWrapper.create(
-            DynamicMessageSet(),
+            past_messages,
             future_messages,
             DynamicTotalUtility(
                 self.t_end,
@@ -186,10 +186,12 @@ class DynamicMessageTree:
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
         message.t_rcv = message.t_gen + self.optimistic_latency
-        self.montecarlo.simulate(200)
+        self.montecarlo.simulate(1500)
         simulate_time = datetime.now()
 
-        # if len(self.montecarlo.root_node.future_messages) < 5:
+        # print(self.verbose_repr())
+        # if len(TreeNodeWrapper(
+        #        self.montecarlo.root_node).future_messages) < 5:
         #     self.debug_once()
 
         try:

@@ -74,8 +74,13 @@ class BaseExperiment:
             open(filename, 'wb')
         )
 
-    def save_graphs(self, f=None):
-        for graph_name, graph in self.get_graphs().items():
+    def save_graphs(self, f=None, graph_names=None):
+        graphs = self.get_graphs()
+        if graph_names is None:
+            graph_names = graphs
+
+        for graph_name in graph_names:
+            graph = graphs[graph_name]
             if type(graph) is list:
                 fig = go.Figure({'data': graph, 'title': "test"})
                 self._set_figure_layout(graph_name, fig)
@@ -83,6 +88,7 @@ class BaseExperiment:
                 fig = graph
             else:
                 raise Exception("Unknown graph type")
-            pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))
             if f is not None:
                 pio.write_image(fig, f.format(graph_name))
+            else:
+                pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))

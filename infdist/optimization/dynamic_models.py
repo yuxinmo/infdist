@@ -11,6 +11,13 @@ class DynamicMessageSet:
         self.message = None
         self.reverse = reverse
 
+    def msgs_gen_after(self, t_gen):
+        if self.message is None or t_gen > self.message.t_gen:
+            return
+        if self._tail is not None:
+            yield from self._tail.msgs_gen_after(t_gen)
+        yield self.message
+
     def all(self):
         """ O(n) """
         if self.message is None:

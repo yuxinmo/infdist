@@ -77,7 +77,7 @@ class FixedRatioAgent(BaseAgent):
 
 
 class BaseTreeAgent(BaseAgent):
-    DEFAULT_T_END = 60
+    DEFAULT_T_END = 10
 
     def __init__(self, *args, **kwargs):
         self.agents = kwargs.pop('agents')

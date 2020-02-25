@@ -21,8 +21,16 @@ def main():
         experiment.result = pickle.load(
             open(get_results_filename(msgset), 'rb')
         )
+        # experiment.save_graphs(
+        #     f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset}' + '_{}.pdf'
+        # )
+
+        folder = (
+            '/home/zeroos/uni/papers/2020-MBarcis-infdistopt/data/experiment'
+        )
         experiment.save_graphs(
-            f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset}' + '_{}.pdf'
+            folder + '/{}_' + f'{msgset}.pdf',
+            ['drop_rate_experiment'],
         )
 
 

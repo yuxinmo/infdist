@@ -1,10 +1,25 @@
 import numpy as np
 import plotly.graph_objs as go
-from scipy.stats import skew
+from plotly.subplots import make_subplots
+import plotly.express as px
 from statsmodels.distributions.empirical_distribution import ECDF
 
 from .base_experiment import BaseExperiment
 from .trial import FixedRatioTrial, TreeTrial
+
+
+_PLOTLY_COLORS = [
+    '#1f77b4',  # muted blue
+    '#ff7f0e',  # safety orange
+    '#2ca02c',  # cooked asparagus green
+    '#d62728',  # brick red
+    '#9467bd',  # muted purple
+    '#8c564b',  # chestnut brown
+    '#e377c2',  # raspberry yogurt pink
+    '#7f7f7f',  # middle gray
+    '#bcbd22',  # curry yellow-green
+    '#17becf',   # blue-teal
+]
 
 
 def avg(l):
@@ -14,12 +29,12 @@ def avg(l):
 class DropRateVsUtilityExperiment(BaseExperiment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        drop_rates_num = 10
+        drop_rates_num = 20
         self.drop_rates = [
             i/drop_rates_num
             for i in range(drop_rates_num+1)
         ]
-        self.repeats = [10, 3]
+        self.repeats = [5, 1]
         self.trial_cls = None
         self.trial_clss = [FixedRatioTrial, TreeTrial]
 
@@ -56,71 +71,175 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         self.result = result
 
     def print_result(self):
-        print("Plot graphs to see results")
+        everything_fine = True
+        for trial_cls in self.trial_clss:
+            trial_name = trial_cls.__name__
+            for drop_rate in self.drop_rates:
+                for stats in self.result[trial_name][drop_rate]:
+                    for name, constraint_violations in (
+                        stats['constraints'].items()
+                    ):
+                        if constraint_violations > 0:
+                            print(
+                                f"!!! {trial_name}/{drop_rate}: "
+                                f"{name} constraint violated "
+                                f"{constraint_violations} times!!!"
+                            )
+                            everything_fine = False
+        if everything_fine:
+            print("All constraints met.")
 
-    def _get_single_result_graph(self, results, name, xs_func, ys_func):
+    def _get_single_result_graph(
+        self, results, name, xs_func, ys_func, style,
+    ):
+        symbol = 3 if style == 0 else 4
+        color = _PLOTLY_COLORS[style+2]
+        dash = 'dash' if style == 0 else 'dot'
         xs = [
-            avg([
-                xs_func(stat)
-                for stat in stat_list])
-            for stat_list in results.values()
+            xs_func(stat)
+            for stat in sum(results.values(), [])
         ]
         ys = [
-            avg([
-                ys_func(stat)
-                for stat in stat_list
-            ])
-            for stat_list in results.values()
+            ys_func(stat)
+            for stat in sum(results.values(), [])
         ]
 
-        return go.Scatter(
-            name=name,
+        fig = px.scatter(
             x=xs,
             y=ys,
-            line={
-                'width': 1,
-            },
-            mode='lines',
+            # trendline='lowess',
         )
+        for d in fig.data:
+            d['marker'] = {
+                'color': color,
+                'symbol': symbol,
+            }
+            d['line'] = {
+                'dash': dash,
+            }
+        return fig
+        # return go.Scatter(
+        #     name=name,
+        #     x=xs,
+        #     y=ys,
+        #     mode='markers',
+        #     marker_symbol=symbol,
+        #     marker_size=4,
+        # )
 
     def get_graph_name(self):
         return 'cumulative'
 
-    def get_graphs(self):
+    def get_cumulative_graph(self):
         g = {}
-        for trial_name in [
+        for i, trial_name in enumerate([
             trial_cls.__name__ for trial_cls in self.trial_clss
-        ]:
+        ]):
             g[trial_name] = {}
             g[trial_name]['set'] = self._get_single_result_graph(
                 self.result[trial_name],
                 trial_name + ' set',
                 lambda stat: stat['set_drop_rate'],
                 lambda stat: stat['total_utility'],
+                style=i,
             )
             g[trial_name]['achieved'] = self._get_single_result_graph(
                 self.result[trial_name],
                 trial_name + ' achieved',
                 lambda stat: 1-(
                     stat['sent_received_num']/stat['total_messages']),
-                lambda stat: stat['total_utility'],
+                lambda stat: stat['total_utility']/stat['max_utility'],
+                style=i,
             )
 
-        return {
-            self.get_graph_name(): sum([
-                [
-                    # g[trial_name]['set'],
-                    g[trial_name]['achieved'],
-                ]
-                for trial_name in [
-                    trial_cls.__name__ for trial_cls in self.trial_clss
-                ]
-            ], []),
+        return [
+            g[trial_name]['achieved']
+            for trial_name in [
+                trial_cls.__name__ for trial_cls in self.trial_clss
+            ]
+        ]
+
+    def get_graphs(self):
+        graphs = {
             'histogram_fixed': self.get_message_utility_histogram(),
             'histogram_tree': self.get_message_utility_histogram('TreeTrial'),
             'cdf_fixed': self.get_message_utility_cdf(),
             'cdf_tree': self.get_message_utility_cdf('TreeTrial'),
         }
+        graphs['drop_rate_experiment'] = self.make_final_figure(
+            self.get_cumulative_graph(),
+            graphs['histogram_fixed'][0],
+            graphs['cdf_fixed'][0],  # TODO: instead of fixed we should have sth like random  # NOQA
+        )
+        return graphs
+
+    def make_final_figure(
+        self, cumulative, histogram, cdf
+    ):
+        fig = make_subplots(rows=2, cols=1)
+        for cumulative_fig in cumulative:
+            for d in cumulative_fig.data:
+                fig.append_trace(
+                    d,
+                    row=1, col=1
+                )
+        x_title_standoff = 5
+        y_title_standoff = 5
+        fig.update_xaxes(
+            title_text="drop rate",
+            title_standoff=x_title_standoff,
+            range=[0, 1],
+            row=1, col=1,
+        )
+        fig.update_yaxes(
+            title_text="% of utility",
+            title_standoff=y_title_standoff,
+            range=[0, 1],
+            row=1, col=1,
+        )
+
+        fig.append_trace(
+            histogram,
+            row=2, col=1
+        )
+        fig.append_trace(
+            cdf,
+            row=2, col=1
+        )
+        fig.update_xaxes(
+            title_text="message utility",
+            title_standoff=x_title_standoff,
+            range=[0, 1],
+            ticktext=["low", "medium", "high"],
+            tickvals=[0, 0.5, 1],
+            row=2, col=1,
+        )
+        fig.update_yaxes(
+            title_text="% of messages",
+            title_standoff=y_title_standoff,
+            range=[0, 1],
+            row=2, col=1,
+        )
+
+        fig.update_layout({
+            "margin": go.layout.Margin(
+                    l=40,  # NOQA
+                    r=0,
+                    b=0,
+                    t=0,
+                    pad=0
+                ),
+            "width": 300,
+            "height": 370,
+            "legend": {
+                "orientation": "h",
+                "bgcolor": "rgba(0, 0, 0, 0)",
+                "x": 0,
+                "y": 1.1,
+            },
+            "showlegend": False,
+        })
+        return fig
 
     def _prepare_histogram_data(
         self, stat,
@@ -134,7 +253,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             if hasattr(m, 'gained_value')
         ]
         normalized_data = [
-            v  # / max(gained_values)
+            v / max(gained_values)
             for v in gained_values
         ]
         return normalized_data
@@ -148,7 +267,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             1-(stat['sent_received_num']/stat['total_messages'])
         )
         return go.Histogram(
-            # nbinsx=7,
+            nbinsx=7,
             x=normalized_data,
             histnorm='probability',
             name=f"{trial_name} {achieved_drop_rate:.02f}",
@@ -171,16 +290,12 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             for v in data
         ]
         ecdf = ECDF(data)
-        plot = [go.Scatter(
+        return [go.Scatter(
             x=np.unique(data),
             y=ecdf(np.unique(data)),
             line_shape='hv',
+            line_color='royalblue',
         )]
-        fig = go.Figure(data=plot)
-        fig.update_layout(
-            title=f"{trial_name} {np.var(data)} {skew(data)}"
-        )
-        return fig
 
     def _single_histogram(self, trial_name):
         data = []
@@ -192,17 +307,17 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             v  # / max(data)
             for v in data
         ]
-        plot = [go.Histogram(
-            # nbinsx=7,
+        return [go.Histogram(
+            xbins={
+                'start': 0,
+                'end': 1,
+                'size': 0.2,
+            },
             x=data,
             histnorm='probability',
             name=f"{trial_name}",
+            marker_color='lightblue',
         )]
-        fig = go.Figure(data=plot)
-        fig.update_layout(
-            title=f"{trial_name} {np.var(data)} {skew(data)}"
-        )
-        return fig
 
     def _multiple_histograms_on_one(self, trial_name):
         graphs = [

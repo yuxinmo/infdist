@@ -1,9 +1,10 @@
 from copy import deepcopy
 
-from optimization.agent import (
+from optimization.agent import (  # NOQA
     EstimatingAgent,
     FixedRatioAgent,
     FullCommAgent,
+    FullKnowledgeAgent,
 )
 
 from simulator.network import NS3Network
@@ -221,7 +222,7 @@ class TreeTrial(Trial):
         self.agent_kwargs['constraints'] = value
 
     def add_msgnum_constraint(self, messages_num, timeslot_length):
-        self.agent_kwargs['window_size'] = timeslot_length
+        # self.agent_kwargs['window_size'] = timeslot_length
         self.constraints = {
             'MSGNUM': simplesim.create_msgnum_constraint_violations(
                 messages_num, timeslot_length
@@ -229,7 +230,7 @@ class TreeTrial(Trial):
         }
 
     def add_throughput_constraint(self, throughput, timeslot_length):
-        self.agent_kwargs['window_size'] = timeslot_length
+        # self.agent_kwargs['window_size'] = timeslot_length
         message_size = self.net.packet_size
         self.constraints = {
             'TPUT': simplesim.create_throughput_constraint_violations(
@@ -243,7 +244,7 @@ class TreeTrial(Trial):
     def set_drop_rate(self, drop_rate):
         assert not self.drop_rate_set
         timeslot_length = 2.5
-        avg_msgs_per_second = len(self.messages)/self.t_end
+        avg_msgs_per_second = 1.5*len(self.messages)/self.t_end
         self.add_msgnum_constraint(
                 (1-drop_rate)*(timeslot_length)*avg_msgs_per_second,
                 timeslot_length

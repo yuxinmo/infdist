@@ -12,9 +12,15 @@ from simulator.experiment import (  # NOQA
     PlaygroundExperiment,
 )
 
-AGENTS_NUM = 4
-T_END = 10
-MSGSETS = range(3)
+SMALL_EXPERIMENTS = False
+if SMALL_EXPERIMENTS:
+    AGENTS_NUM = 10
+    T_END = 10
+    MSGSETS = range(3)
+else:
+    AGENTS_NUM = 10
+    T_END = 100
+    MSGSETS = range(3)
 
 
 def get_results_filename(msgset):
@@ -41,13 +47,13 @@ def main():
     ]
     experiment_clss
     # run_experiment(LimitedThroughputExperiment)
-    # run_experiment(DropRateVsUtilityExperiment)
+    run_experiment(DropRateVsUtilityExperiment)
     # run_experiment(GraphMessagesExperiment)
     # run_experiment(MessageSizeExperiment)
     # run_experiment(BytesInWindowGraph)
     # run_experiment(WindowLengthExperiment)
     # run_experiment(TEndExperiment)
-    run_experiment(PlaygroundExperiment)
+    # run_experiment(PlaygroundExperiment)
 
 
 if __name__ == '__main__':
