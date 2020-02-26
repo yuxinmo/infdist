@@ -43,7 +43,7 @@ class AggregationMostRecent(Aggregation):
         """
         TODO: weight si only used for debugging, remove it
         """
-        result = 0
+        cdef double result = 0
         msgs = messages.all()
         if not msgs:
             return 0

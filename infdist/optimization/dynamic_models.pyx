@@ -135,12 +135,14 @@ class DynamicAggregatedUtility:
         return d
 
     def value(self, t_end):
-        return self.information_type.weight * (
-            self.utility_so_far +
+        cdef double weight = self.information_type.weight
+        cdef double utility_so_far = self.utility_so_far
+        cdef double to_end = (
             self.information_type.aggregation.dynamic_integrate_to_end(
                 self, t_end
             )
         )
+        return weight * (utility_so_far + to_end)
 
 
 class DynamicTotalUtility:
