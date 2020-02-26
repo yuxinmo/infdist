@@ -1,3 +1,4 @@
+from copy import deepcopy
 import numpy as np
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -29,12 +30,12 @@ def avg(l):
 class DropRateVsUtilityExperiment(BaseExperiment):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        drop_rates_num = 20
+        drop_rates_num = 30
         self.drop_rates = [
             i/drop_rates_num
             for i in range(drop_rates_num+1)
         ]
-        self.repeats = [5, 1]
+        self.repeats = [1, 1]
         self.trial_cls = None
         self.trial_clss = [FixedRatioTrial, TreeTrial]
 
@@ -171,7 +172,53 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             graphs['histogram_fixed'][0],
             graphs['cdf_fixed'][0],  # TODO: instead of fixed we should have sth like random  # NOQA
         )
+        graphs['legend'] = self.extract_legend(
+            self.get_cumulative_graph(),
+            graphs['histogram_fixed'][0],
+            graphs['cdf_fixed'][0],  # TODO: instead of fixed we should have sth like random  # NOQA
+        )
         return graphs
+
+    def extract_legend(self, cumulative, histogram, cdf):
+        fig = go.Figure()
+
+        names = [
+            "Information Distribution Middleware",
+            "random method",
+        ]
+        for cumulative_fig in cumulative:
+            for d in cumulative_fig.data:
+                d['name'] = names.pop()
+                d['showlegend'] = True
+                fig.add_trace(
+                    d,
+                )
+        fig.add_trace(histogram)
+        fig.add_trace(cdf)
+
+        fig.update_layout(
+            legend=dict(
+                x=0, y=1,
+                bgcolor="white",
+                orientation="h",
+            ),
+            margin=go.layout.Margin(
+                l=0,  # NOQA
+                r=0,
+                b=0,
+                t=0,
+                pad=0
+            ),
+            autosize=False,
+            width=660,
+            height=22,
+        )
+        fig.update_yaxes(
+            range=[100, 100.0001],
+            showticklabels=False,
+        )
+        fig['layout']['showlegend'] = True
+        return fig
 
     def make_final_figure(
         self, cumulative, histogram, cdf
@@ -231,12 +278,6 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 ),
             "width": 300,
             "height": 370,
-            "legend": {
-                "orientation": "h",
-                "bgcolor": "rgba(0, 0, 0, 0)",
-                "x": 0,
-                "y": 1.1,
-            },
             "showlegend": False,
         })
         return fig
@@ -291,6 +332,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         ]
         ecdf = ECDF(data)
         return [go.Scatter(
+            name="empirical distribution function",
             x=np.unique(data),
             y=ecdf(np.unique(data)),
             line_shape='hv',
@@ -315,7 +357,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             },
             x=data,
             histnorm='probability',
-            name=f"{trial_name}",
+            name=f"histogram",
             marker_color='lightblue',
         )]
 

@@ -12,8 +12,12 @@ from simulator.experiment import (  # NOQA
     PlaygroundExperiment,
 )
 
-SMALL_EXPERIMENTS = False
-if SMALL_EXPERIMENTS:
+SMALL_EXPERIMENTS = 'very'
+if SMALL_EXPERIMENTS == 'very':
+    AGENTS_NUM = 3
+    T_END = 10
+    MSGSETS = range(3)
+elif SMALL_EXPERIMENTS:
     AGENTS_NUM = 10
     T_END = 10
     MSGSETS = range(3)

@@ -30,7 +30,7 @@ def main():
         )
         experiment.save_graphs(
             folder + '/{}_' + f'{msgset}.pdf',
-            ['drop_rate_experiment'],
+            ['drop_rate_experiment', 'legend'],
         )
 
 
