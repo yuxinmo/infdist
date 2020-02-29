@@ -69,6 +69,7 @@ class DynamicMessageTree:
         self.montecarlo.child_finder = _child_finder
 
     def update_future(self, future_messages):
+        self.t_end = future_messages.t_end
         simplesim.latency(
             future_messages,
             self.optimistic_latency,
