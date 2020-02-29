@@ -1,8 +1,9 @@
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 
+
 package_name = 'infdist'
+
 
 setup(
     name=package_name,
@@ -36,9 +37,14 @@ setup(
     },
     ext_modules=cythonize(
         [
-            "infdist/optimization/aggregations.pyx",
-            "infdist/optimization/dynamic_models.pyx",
-        ],
-        annotate=True
+            Extension(
+                'infdist.optimization.aggregations',
+                ["infdist/optimization/aggregations.pyx"],
+            ),
+            Extension(
+                'infdist.optimization.dynamic_models',
+                ["infdist/optimization/dynamic_models.pyx"],
+            ),
+        ]
     )
 )
