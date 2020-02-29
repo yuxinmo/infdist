@@ -70,6 +70,7 @@ class DynamicMessageTree:
 
     def update_future(self, future_messages):
         self.t_end = future_messages.t_end
+        self.past_messages.t_end = self.t_end
         simplesim.latency(
             future_messages,
             self.optimistic_latency,
