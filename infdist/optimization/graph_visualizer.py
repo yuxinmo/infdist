@@ -1,8 +1,9 @@
 from graphviz import Digraph, nohtml
+from tree_node_wrapper import TreeNodeWrapper
 
 
 def node_formatter(node):
-    return '{ ' + str(node).replace('\n', '|') + ' }'
+    return '{ ' + str(TreeNodeWrapper(node)).replace('\n', '|') + ' }'
 
 
 def show_graph(root):
