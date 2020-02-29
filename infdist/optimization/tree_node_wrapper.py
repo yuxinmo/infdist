@@ -63,18 +63,33 @@ class TreeNodeWrapper:
         self.node.add_child(negative_child)
 
     def __str__(self):
+        from math import sqrt, log
+        if self.node.visits == 0:
+            score = float('inf')
+        elif self.node.parent:
+            parent_visits = self.node.parent.visits
+            discovery_operand = (
+                0.35 *
+                sqrt(log(parent_visits) / self.node.visits)
+            )
+
+            win_operand = self.node.win_value / self.node.visits
+
+            score = win_operand + discovery_operand
+        else:
+            score = -1
         return (
             "{} msg sender: {} t_sent: {:.3f}\n"
-            "score: {:.5f}\n"
+            "score: {:.5f} ({:.2f})\n"
             "mean val: {:.5f} ({} visits)\n"
             "messages: {} sent, {} to go"
         ).format(
             getattr(self.message, 'data_type_name', 'unk'),
             getattr(self.message, 'sender', 'unk'),
             getattr(self.message, 't_sent', -1),
-            getattr(self, 'score', -1),
-            self.win_value / (self.visits or 1),
-            self.visits,
+            score, self.dynamic_utility.value(),
+            self.node.win_value / (self.node.visits or 1),
+            self.node.visits,
             len(self.sent_messages),
             len(self.future_messages),
         )
