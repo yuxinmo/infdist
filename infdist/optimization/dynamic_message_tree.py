@@ -7,7 +7,7 @@ from .graph_visualizer import show_graph  # NOQA
 from .models import MessageSet
 from .dynamic_models import DynamicMessageSet
 from .dynamic_models import DynamicTotalUtility
-from tree_node_wrapper import TreeNodeWrapper
+from .tree_node_wrapper import TreeNodeWrapper
 from . import simplesim
 
 

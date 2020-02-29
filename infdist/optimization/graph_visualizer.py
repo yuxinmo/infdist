@@ -1,5 +1,5 @@
 from graphviz import Digraph, nohtml
-from tree_node_wrapper import TreeNodeWrapper
+from .tree_node_wrapper import TreeNodeWrapper
 
 
 def node_formatter(node):
@@ -7,7 +7,7 @@ def node_formatter(node):
 
 
 def show_graph(root):
-    dot = Digraph(node_attr={'shape': 'record'})
+    dot = Digraph(node_attr={'shape': 'record'}, format='pdf')
     nodes_queue = [(root, None)]
     node_i = 0
 
