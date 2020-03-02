@@ -1,7 +1,5 @@
 from . import BaseExperiment
 
-from optimization.video_mission import generate_example_video_mission
-
 
 class PlaygroundExperiment(BaseExperiment):
     def prepare_trial(self, *args, **kwargs):

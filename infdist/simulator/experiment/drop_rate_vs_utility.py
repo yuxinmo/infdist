@@ -1,4 +1,3 @@
-from copy import deepcopy
 import numpy as np
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
@@ -11,9 +10,9 @@ from .trial import FixedRatioTrial, TreeTrial
 
 _PLOTLY_COLORS = [
     '#1f77b4',  # muted blue
+    '#d62728',  # brick red
     '#ff7f0e',  # safety orange
     '#2ca02c',  # cooked asparagus green
-    '#d62728',  # brick red
     '#9467bd',  # muted purple
     '#8c564b',  # chestnut brown
     '#e377c2',  # raspberry yogurt pink
@@ -94,14 +93,14 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         self, results, name, xs_func, ys_func, style,
     ):
         symbol = 3 if style == 0 else 4
-        color = _PLOTLY_COLORS[style+2]
+        color = _PLOTLY_COLORS[style]
         dash = 'dash' if style == 0 else 'dot'
         xs = [
             xs_func(stat)
             for stat in sum(results.values(), [])
         ]
         ys = [
-            ys_func(stat)
+            ys_func(stat) * 100
             for stat in sum(results.values(), [])
         ]
 
@@ -210,7 +209,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 pad=0
             ),
             autosize=False,
-            width=660,
+            width=537,
             height=22,
         )
         fig.update_yaxes(
@@ -241,7 +240,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         fig.update_yaxes(
             title_text="% of utility",
             title_standoff=y_title_standoff,
-            range=[0, 1],
+            range=[0, 100],
             row=1, col=1,
         )
 
@@ -264,7 +263,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         fig.update_yaxes(
             title_text="% of messages",
             title_standoff=y_title_standoff,
-            range=[0, 1],
+            range=[0, 100],
             row=2, col=1,
         )
 
@@ -332,11 +331,11 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         ]
         ecdf = ECDF(data)
         return [go.Scatter(
-            name="empirical distribution function",
+            name="eCDF",
             x=np.unique(data),
-            y=ecdf(np.unique(data)),
+            y=ecdf(np.unique(data))*100,
             line_shape='hv',
-            line_color='royalblue',
+            line_color='darkgreen',
         )]
 
     def _single_histogram(self, trial_name):
@@ -356,9 +355,9 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 'size': 0.2,
             },
             x=data,
-            histnorm='probability',
+            histnorm='percent',
             name=f"histogram",
-            marker_color='lightblue',
+            marker_color='lightgreen',
         )]
 
     def _multiple_histograms_on_one(self, trial_name):

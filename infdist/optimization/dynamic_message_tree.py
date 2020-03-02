@@ -54,6 +54,11 @@ class DynamicMessageTree:
                 node.dynamic_utility.value()/self.max_utility
                 * self.t_end / current_t
             )
+        if self.limit_history:
+            self.past_messages._messages = (
+                self.past_messages._messages[-self.limit_history:]
+            )
+
         future_messages = self.future_messages
         past_messages = DynamicMessageSet()
         past_messages = past_messages.add_messageset(self.past_messages)
@@ -99,10 +104,6 @@ class DynamicMessageTree:
         self.past_messages.append(
             message, False
         )
-        if self.limit_history:
-            self.past_messages._messages = (
-                self.past_messages._messages[-self.limit_history:]
-            )
 
     def decide(self, message):
         start_time = datetime.now()
