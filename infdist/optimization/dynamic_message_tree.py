@@ -30,7 +30,7 @@ class DynamicMessageTree:
 
     @latency.setter
     def latency(self, latency):
-        self.pessymistic_latency = latency
+        self.pessymistic_latency = latency*20
         self.optimistic_latency = latency
 
     def reinit_mcts(self, message):
@@ -110,13 +110,35 @@ class DynamicMessageTree:
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
         message.t_rcv = message.t_gen + self.optimistic_latency
-        self.montecarlo.simulate(1500)
+
+        if (
+            message.t_gen > 1 and
+            not getattr(DynamicMessageTree, 'DEBUGGED_ONCE', False)
+        ):
+            print("Generating tree visualization started")
+            simulations_num = 100
+            for i in range(1, simulations_num):
+                print(f'{i}/{simulations_num}')
+                self.montecarlo.simulate(1)
+                self.show_graph(
+                    None,
+                    message,
+                    f=f'/tmp/mcts/{i:03d}',
+                    sim_num=i
+                )
+            self.montecarlo.simulate(200)
+
+            DynamicMessageTree.DEBUGGED_ONCE = True
+            print("Generating tree visualization finished")
+
+        else:
+            self.montecarlo.simulate(1500)
         simulate_time = datetime.now()
 
         # print(self.verbose_repr())
-        # if len(TreeNodeWrapper(
-        #        self.montecarlo.root_node).future_messages) < 5:
-        #     self.debug_once()
+        if len(TreeNodeWrapper(
+               self.montecarlo.root_node).future_messages) < 6:
+            self.debug_once(message)
 
         try:
             while (
@@ -143,11 +165,11 @@ class DynamicMessageTree:
             return True
         return False
 
-    def debug_once(self):
+    def debug_once(self, emphasized_message):
         if not getattr(DynamicMessageTree, "DEBUGGED_ONCE", False):
             print("Debugging!")
             DynamicMessageTree.DEBUGGED_ONCE = True
-            self.show_graph()
+            self.show_graph(None, emphasized_message)
             print(self.verbose_repr())
             print("Your turn to debug!")
 
@@ -157,14 +179,20 @@ class DynamicMessageTree:
         import time
         time.sleep(1)
 
-    def show_graph_once(self, node=None):
+    def show_graph_once(self, node=None, emphasized_message=None):
         self.show_graph_once = lambda _: None
-        show_graph(node)
+        show_graph(node, emphasized_message)
 
-    def show_graph(self, node=None):
+    def show_graph(
+        self,
+        node=None,
+        emphasized_message=None,
+        f="/tmp/graph.png",
+        sim_num=1500,
+    ):
         if node is None:
             node = self.montecarlo.root_node
-        show_graph(node)
+        show_graph(node, emphasized_message, f=f, sim_num=sim_num)
 
     def verbose_repr(self):
         fields = ['sender', 't_sent', 't_rcv', 'data_type_name']

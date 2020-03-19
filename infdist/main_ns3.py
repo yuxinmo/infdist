@@ -14,9 +14,9 @@ from simulator.experiment import (  # NOQA
 
 SMALL_EXPERIMENTS = 'very'
 if SMALL_EXPERIMENTS == 'very':
-    AGENTS_NUM = 3
+    AGENTS_NUM = 5
     T_END = 10
-    MSGSETS = range(3)
+    MSGSETS = [0]
 elif SMALL_EXPERIMENTS:
     AGENTS_NUM = 10
     T_END = 10
@@ -51,13 +51,13 @@ def main():
     ]
     experiment_clss
     # run_experiment(LimitedThroughputExperiment)
-    run_experiment(DropRateVsUtilityExperiment)
+    # run_experiment(DropRateVsUtilityExperiment)
     # run_experiment(GraphMessagesExperiment)
     # run_experiment(MessageSizeExperiment)
     # run_experiment(BytesInWindowGraph)
     # run_experiment(WindowLengthExperiment)
     # run_experiment(TEndExperiment)
-    # run_experiment(PlaygroundExperiment)
+    run_experiment(PlaygroundExperiment)
 
 
 if __name__ == '__main__':
