@@ -70,13 +70,20 @@ class NS3Network(BaseNetwork):
             socket.SetAllowBroadcast(True)
             socket.Bind(any_address)
             socket.Connect(broadcast_address)
-        self.use_small_packets()
 
     def serialize(self, native_message):
         return native_message
 
     def deserialize(self, message):
         return message
+
+    def add_background_traffic_pattern(self, background_traffic_pattern):
+        for t_start, t_end, throughput in zip(
+            background_traffic_pattern.ts[:-1],
+            background_traffic_pattern.ts[1:],
+            background_traffic_pattern.throughputs
+        ):
+            self.add_background_traffic(t_start, t_end, throughput)
 
     def add_background_traffic(self, t_start, t_end, throughput):
         """
@@ -91,9 +98,6 @@ class NS3Network(BaseNetwork):
 
         def succeeded(a):
             # print("Connected")
-            pass
-
-        def send_callback(a, b):
             pass
 
         def not_succeeded(a):
@@ -119,15 +123,7 @@ class NS3Network(BaseNetwork):
             socket.SetConnectCallback(succeeded, not_succeeded)
             socket.SetAcceptCallback(accept_callback, new_connection)
 
-        source = ns.network.Socket.CreateSocket(
-            self.nodes.Get(0),
-            ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
-        )
-        source.SetConnectCallback(succeeded, not_succeeded)
-        source.SetSendCallback(send_callback)
-
-        self.background_source = source
-        self.connect_background()
+        self.reinit_background_source()
         self.background_packet_size = 1000
         packets = int(
             throughput*10**6/8*(t_end-t_start)/self.background_packet_size
@@ -138,11 +134,33 @@ class NS3Network(BaseNetwork):
                 self.send_background_packet
             )
 
+    def reinit_background_source(self):
+        def send_callback(a, b):
+            pass
+
+        def succeeded(a):
+            # print("Connected")
+            pass
+
+        def not_succeeded(a):
+            print("ERROR: not connected")
+
+        source = ns.network.Socket.CreateSocket(
+            self.nodes.Get(0),
+            ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
+        )
+        source.SetConnectCallback(succeeded, not_succeeded)
+        source.SetSendCallback(send_callback)
+
+        self.background_source = source
+        self.connect_background()
+
     def send_background_packet(self, size=None):
         if size is None:
             size = self.background_packet_size
 
         if(self.background_source.GetTxAvailable() < size):
+            self.reinit_background_source()
             return
         packet = ns.network.Packet(size)
         self.background_source.Send(packet, 0)
@@ -153,12 +171,6 @@ class NS3Network(BaseNetwork):
             ns.network.Ipv4Address("10.1.1.2"), self.BACKGROUND_PORT,
         )
         self.background_source.Connect(sink_address)
-
-    def use_small_packets(self):
-        self.packet_size = 2048
-
-    def use_big_packets(self):
-        self.packet_size = 60480
 
     def set_data_rate(self, data_rate):
         assert not self.initialized, \
@@ -233,7 +245,7 @@ class NS3Network(BaseNetwork):
         for callback in self._message_received_callbacks[node_id]:
             callback(message)
 
-    def _header2message(self, header, receivers):
+    def _header2message(self, header, receivers, size):
         t_gen = header.GetTimestamp()/10**9
         return Message(
             header.GetSender(),
@@ -241,6 +253,7 @@ class NS3Network(BaseNetwork):
             t_sent=t_gen,
             data_type_name=self.known_data_types.get_data_type_name(
                 header.GetDataType()),
+            size=size,
             data=json.loads(header.GetData()),
             t_gen=t_gen,
             t_rcv=simulator.now_float(),
@@ -253,7 +266,7 @@ class NS3Network(BaseNetwork):
             packet.RemoveHeader(header)
             # print("rcvd", self._header_repr(header), ns.core.Simulator.Now())
             self._message_received(
-                self._header2message(header, {node_id}),
+                self._header2message(header, {node_id}, packet.GetSize()),
                 node_id,
             )
         return _ns3_receive_callback
@@ -268,7 +281,7 @@ class NS3Network(BaseNetwork):
         )
 
     def send(self, message):
-        packet = ns.network.Packet(self.packet_size)
+        packet = ns.network.Packet(message.size)
 
         header = ns.network.InfDistHeader()
         header.SetDataType(

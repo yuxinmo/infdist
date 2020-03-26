@@ -10,12 +10,13 @@ from simulator.experiment import (  # NOQA
     MessageSizeExperiment,
     TEndExperiment,
     PlaygroundExperiment,
+    VaryingBackgroundTrafficExperiment,
 )
 
 SMALL_EXPERIMENTS = 'very'
 if SMALL_EXPERIMENTS == 'very':
     AGENTS_NUM = 5
-    T_END = 10
+    T_END = 30
     MSGSETS = [0]
 elif SMALL_EXPERIMENTS:
     AGENTS_NUM = 10
@@ -43,13 +44,6 @@ def run_experiment(experiment_cls):
 
 
 def main():
-    experiment_clss = [
-        DropRateVsUtilityExperiment,
-        LimitedThroughputExperiment,
-        GraphMessagesExperiment,
-        WindowLengthExperiment
-    ]
-    experiment_clss
     # run_experiment(LimitedThroughputExperiment)
     # run_experiment(DropRateVsUtilityExperiment)
     # run_experiment(GraphMessagesExperiment)
@@ -57,7 +51,8 @@ def main():
     # run_experiment(BytesInWindowGraph)
     # run_experiment(WindowLengthExperiment)
     # run_experiment(TEndExperiment)
-    run_experiment(PlaygroundExperiment)
+    # run_experiment(PlaygroundExperiment)
+    run_experiment(VaryingBackgroundTrafficExperiment)
 
 
 if __name__ == '__main__':

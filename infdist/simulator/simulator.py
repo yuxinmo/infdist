@@ -7,6 +7,13 @@ def schedule(time, callback):
     )
 
 
+def stop(time=None):
+    if time is None:
+        ns.core.Simulator.Stop()
+    else:
+        schedule(time, lambda: stop())
+
+
 def run():
     ns.core.Simulator.Run()
     ns.core.Simulator.Destroy()

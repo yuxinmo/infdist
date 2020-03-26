@@ -107,8 +107,8 @@ class Trial:
             stats['sent_received_num']/stats['total_messages']*100,
             stats['sent_received_num']/stats['sent_num']*100,
         ))
-        print("Achieved data rate: {:.3f} Mbps with avg latency of {}".format(
-            stats['sent_received_num']*self.net.packet_size * 8 / 10**6
+        print("AVG data rate: {:.3f} Mbps with avg latency of {}".format(
+            sum([m.size for m in stats['no_duplicates'].all()]) * 8 / 10**6
             / self.t_end,
             stats['avg_latency'],
         ))
@@ -185,6 +185,7 @@ class Trial:
             )
 
         simulator.schedule(self.t_end, self.finish_mission)
+        simulator.stop(self.t_end+1)
         simulator.run()
 
 
@@ -231,15 +232,14 @@ class TreeTrial(Trial):
 
     def add_throughput_constraint(self, throughput, timeslot_length):
         # self.agent_kwargs['window_size'] = timeslot_length
-        message_size = self.net.packet_size
         self.constraints = {
             'TPUT': simplesim.create_throughput_constraint_violations(
-                throughput, timeslot_length, message_size,
+                throughput, timeslot_length,
             ),
         }
 
     def set_throughput(self, throughput):
-        self.add_throughput_constraint(throughput, 1)
+        self.add_throughput_constraint(throughput, 2.5)
 
     def set_drop_rate(self, drop_rate):
         assert not self.drop_rate_set

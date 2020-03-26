@@ -9,6 +9,7 @@ __all__ = [
     'MessageSizeExperiment',
     'TEndExperiment',
     'PlaygroundExperiment',
+    'VaryingBackgroundTrafficExperiment',
 ]
 
 from .base_experiment import BaseExperiment
@@ -21,3 +22,6 @@ from .window_length import WindowLengthExperiment
 from .message_size import MessageSizeExperiment
 from .t_end import TEndExperiment
 from .playground_experiment import PlaygroundExperiment
+from .varying_background_traffic_experiment import (
+    VaryingBackgroundTrafficExperiment
+)

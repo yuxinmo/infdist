@@ -4,18 +4,20 @@ from types import SimpleNamespace
 class Message:
     __slots__ = (
         'sender', 'receivers', 't_gen', 't_sent', 't_rcv', 'data_type_name',
-        'data', 'gained_value',
+        'size', 'data', 'gained_value',
     )
 
     def __init__(self, sender, receivers, t_gen,
-                 data_type_name, data=None,
+                 data_type_name, size, data=None,
                  t_sent=None, t_rcv=None):
+        assert isinstance(size, int)
         self.sender = sender
         self.receivers = receivers
         self.t_gen = t_gen
         self.t_sent = t_sent
         self.t_rcv = t_rcv
         self.data_type_name = data_type_name
+        self.size = size
         self.data = SimpleNamespace(**data)
 
     def gained_utility(self, value):
