@@ -8,15 +8,14 @@ from .message_forecast import FullKnowledgeTypeForecast, PeriodicTypeForecast  #
 BATTERY_DATA_TYPE = 'batt'
 POSITION_DATA_TYPE = 'position'
 
-MESSAGE_SIZE = 2048
-MESSAGE_SIZE = 4048
-
 presets = [
     {
         'max_depl_rate_mi': lambda: np.random.normal(0.2, 0.2),
         'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
         't_gen': lambda t: abs(np.random.normal(t, 0.1)),
         'topic_weight': lambda i: 3**(i+1),
+        # 'message_size': lambda i: 2048 - i*25,
+        'message_size': lambda i: 2048,
     },
     {
         'max_depl_rate_mi': lambda: np.random.normal(0.3, 0.01),
@@ -51,7 +50,7 @@ def generate_periodic_messages(
             set(receivers) - set([sender]),
             presets[msgset]['t_gen'](t),
             gen_data_type_name(sender),
-            MESSAGE_SIZE,
+            presets[msgset]['message_size'](sender),
             data_f(t)
         )
         for t in np.arange(t_start, t_end, 1/f)
@@ -103,7 +102,7 @@ def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
                 'sender': sender,
                 'initial_t_start': t_start,
                 'T': 1/f,
-                'size': MESSAGE_SIZE,
+                'size': presets[msgset]['message_size'](sender),
             }
 
     return (
@@ -162,8 +161,8 @@ def generate_simple_3D_reconstruction(
         # level_end = level_start * np.random.random()
         messages, context = generate_batt_messages(
             t_end, sender, receivers,
-            f=np.random.normal(1, 0.1),
-            t_start=int(np.random.random()),
+            f=np.random.normal(3, 0.1),
+            t_start=int(np.random.random()) + sender*30,
             level_start=level_start,
             level_end=level_end,
             msgset=msgset,

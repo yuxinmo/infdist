@@ -59,7 +59,7 @@ class Trial:
             constraints[name] = constraint(no_duplicates)
 
         all_messages = deepcopy(self.messages)
-        simplesim.latency(all_messages, 0)
+        simplesim.apply_latency(all_messages, 0)
 
         return {
             'no_duplicates': no_duplicates,
@@ -237,9 +237,10 @@ class TreeTrial(Trial):
                 throughput, timeslot_length,
             ),
         }
+        return self.constraints
 
     def set_throughput(self, throughput):
-        self.add_throughput_constraint(throughput, 2.5)
+        return self.add_throughput_constraint(throughput, 2.5)
 
     def set_drop_rate(self, drop_rate):
         assert not self.drop_rate_set

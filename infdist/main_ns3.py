@@ -15,8 +15,8 @@ from simulator.experiment import (  # NOQA
 
 SMALL_EXPERIMENTS = 'very'
 if SMALL_EXPERIMENTS == 'very':
-    AGENTS_NUM = 5
-    T_END = 30
+    AGENTS_NUM = 16
+    T_END = 100
     MSGSETS = [0]
 elif SMALL_EXPERIMENTS:
     AGENTS_NUM = 10
@@ -43,6 +43,11 @@ def run_experiment(experiment_cls):
         experiment.save_results(get_results_filename(msgset))
 
 
+EXPERIMENTS_TO_RUN = [
+    VaryingBackgroundTrafficExperiment,
+]
+
+
 def main():
     # run_experiment(LimitedThroughputExperiment)
     # run_experiment(DropRateVsUtilityExperiment)
@@ -52,7 +57,8 @@ def main():
     # run_experiment(WindowLengthExperiment)
     # run_experiment(TEndExperiment)
     # run_experiment(PlaygroundExperiment)
-    run_experiment(VaryingBackgroundTrafficExperiment)
+    for experiment in EXPERIMENTS_TO_RUN:
+        run_experiment(experiment)
 
 
 if __name__ == '__main__':

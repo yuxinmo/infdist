@@ -44,10 +44,14 @@ class BaseExperiment:
     def run(self, debug=DEBUG_NONE):
         t = self.prepare_trial()
         t.run()
-        self.result = t
+        self.result = self.get_result(t)
+        self.resulting_trial = t
+
+    def get_result(self, trial):
+        return trial
 
     def print_result(self):
-        self.result.print_stats()
+        self.resulting_trial.print_stats()
 
     def get_graphs(self):
         return {}

@@ -30,7 +30,7 @@ class DynamicMessageTree:
 
     @latency.setter
     def latency(self, latency):
-        self.pessymistic_latency = latency*20
+        self.pessymistic_latency = latency*2
         self.optimistic_latency = latency
 
     def reinit_mcts(self, message):
@@ -76,7 +76,7 @@ class DynamicMessageTree:
     def update_future(self, future_messages):
         self.t_end = future_messages.t_end
         self.past_messages.t_end = self.t_end
-        simplesim.latency(
+        simplesim.apply_latency(
             future_messages,
             self.optimistic_latency,
         )
@@ -122,6 +122,7 @@ class DynamicMessageTree:
         print("Generating tree visualization finished")
 
     def decide(self, message):
+        return True
         start_time = datetime.now()
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
@@ -158,6 +159,7 @@ class DynamicMessageTree:
 
         if message in TreeNodeWrapper(choice).sent_messages.all():
             return True
+        print("DONT SEND")
         return False
 
     def debug_once(self, emphasized_message):

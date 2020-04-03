@@ -136,6 +136,7 @@ class PeriodicTypeForecast(BaseTypeForecast):
         self.battery_level = battery_level
         self.receivers = receivers
         self.T = T
+        self.initial_t_start = initial_t_start
         self.t_start = initial_t_start
         self.t_start_samples = Samples()
         self.previous_message = None
@@ -169,6 +170,8 @@ class PeriodicTypeForecast(BaseTypeForecast):
         )
 
     def message_generator(self, t_start, given_messages):
+        if t_start < self.initial_t_start:
+            t_start = self.initial_t_start
         start = t_start + self.T - (t_start - self.t_start) % self.T
         for t in np.arange(start, self.t_end, self.T):
             message = self.create_message(t)

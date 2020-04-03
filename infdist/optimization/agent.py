@@ -97,6 +97,10 @@ class BaseTreeAgent(BaseAgent):
     def process_message(self, message):
         if not self.active:
             return self.ACT_DROP
+        for constraint in self.constraints.values():
+            constraint.update_model(
+                self.received_messages + self.sent_messages, self.now_func()
+            )
         self.tree.progress_time(message.t_gen)
         est_sent_message = copy(message)
         est_sent_message.t_sent = self.now_func()

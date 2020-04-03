@@ -48,6 +48,8 @@ class NS3Network(BaseNetwork):
         self.nodes = ns.network.NodeContainer()
         self.nodes.Create(nodes_num)
         self.set_data_rate(data_rate)
+        self.background_noise_mode = 'tcp'
+        self.background_noise_history = []
 
         self._init_network()
 
@@ -77,24 +79,33 @@ class NS3Network(BaseNetwork):
     def deserialize(self, message):
         return message
 
-    def add_background_traffic_pattern(self, background_traffic_pattern):
+    def add_background_traffic_pattern(
+        self,
+        background_traffic_pattern,
+        mode='tcp',
+    ):
         for t_start, t_end, throughput in zip(
             background_traffic_pattern.ts[:-1],
             background_traffic_pattern.ts[1:],
             background_traffic_pattern.throughputs
         ):
-            self.add_background_traffic(t_start, t_end, throughput)
+            self.add_background_traffic(t_start, t_end, throughput, mode)
 
-    def add_background_traffic(self, t_start, t_end, throughput):
+    def add_background_traffic(self, t_start, t_end, throughput, mode='tcp'):
         """
         throughput in Mbps
         """
+        assert mode in ('tcp', 'udp')
+        self.background_noise_mode = mode
         any_address = ns.network.InetSocketAddress(
             ns.network.Ipv4Address.GetAny(), self.BACKGROUND_PORT
         )
 
-        def source_rcvd(*args, **kwargs):
-            pass
+        def source_rcvd(socket):
+            packet = socket.Recv(2048, 0)
+            self.background_noise_history.append(
+                (simulator.now_float(), packet.GetSize())
+            )
 
         def succeeded(a):
             # print("Connected")
@@ -114,17 +125,24 @@ class NS3Network(BaseNetwork):
             node = self.nodes.Get(i)
             socket = ns.network.Socket.CreateSocket(
                 node,
-                ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
+                ns.core.TypeId.LookupByName(
+                    "ns3::TcpSocketFactory"
+                    if self.background_noise_mode == 'tcp' else
+                    "ns3::UdpSocketFactory"
+                )
             )
             socket.Bind(any_address)
             socket.Listen()
             sockets.append(socket)
 
+            if self.background_noise_mode != 'tcp':
+                socket.SetRecvCallback(source_rcvd)
+
             socket.SetConnectCallback(succeeded, not_succeeded)
             socket.SetAcceptCallback(accept_callback, new_connection)
 
         self.reinit_background_source()
-        self.background_packet_size = 1000
+        self.background_packet_size = 2048
         packets = int(
             throughput*10**6/8*(t_end-t_start)/self.background_packet_size
         )
@@ -147,7 +165,11 @@ class NS3Network(BaseNetwork):
 
         source = ns.network.Socket.CreateSocket(
             self.nodes.Get(0),
-            ns.core.TypeId.LookupByName("ns3::TcpSocketFactory")
+            ns.core.TypeId.LookupByName(
+                "ns3::TcpSocketFactory"
+                if self.background_noise_mode == 'tcp' else
+                "ns3::UdpSocketFactory"
+            )
         )
         source.SetConnectCallback(succeeded, not_succeeded)
         source.SetSendCallback(send_callback)
@@ -158,7 +180,6 @@ class NS3Network(BaseNetwork):
     def send_background_packet(self, size=None):
         if size is None:
             size = self.background_packet_size
-
         if(self.background_source.GetTxAvailable() < size):
             self.reinit_background_source()
             return
