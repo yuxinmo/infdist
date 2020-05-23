@@ -15,7 +15,7 @@ from simulator.experiment import (  # NOQA
 
 from main_ns3 import (
     AGENTS_NUM, T_END, MSGSETS, get_results_filename,
-    EXPERIMENTS_TO_RUN,
+    EXPERIMENTS_TO_RUN, PUBLICATION_DATA_DIR,
 )
 
 
@@ -24,11 +24,15 @@ def main():
         for experiment_cls in EXPERIMENTS_TO_RUN:
             experiment = experiment_cls(AGENTS_NUM, T_END, msgset)
             experiment.result = pickle.load(
-                open(get_results_filename(msgset), 'rb')
+                open(get_results_filename(msgset, experiment_cls), 'rb')
             )
             experiment.save_graphs(
-                 f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset}' + '_{}.pdf'
-             )
+                f'/tmp/graphs/'
+                f'{AGENTS_NUM}_{T_END}_{msgset["ident"]}' + '_{}.pdf'
+            )
+            experiment.save_publication_graphs(
+                PUBLICATION_DATA_DIR
+            )
 
 
 if __name__ == '__main__':

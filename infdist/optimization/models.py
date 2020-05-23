@@ -1,5 +1,8 @@
 from types import SimpleNamespace
 
+import numpy
+numpy.seterr('raise')
+
 
 class Message:
     __slots__ = (

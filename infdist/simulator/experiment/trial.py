@@ -5,6 +5,7 @@ from optimization.agent import (  # NOQA
     FixedRatioAgent,
     FullCommAgent,
     FullKnowledgeAgent,
+    GreedyConstrainedAgent,
 )
 
 from simulator.network import NS3Network
@@ -62,6 +63,8 @@ class Trial:
         simplesim.apply_latency(all_messages, 0)
 
         return {
+            'all_messages': all_messages,
+            't_end': self.t_end,
             'no_duplicates': no_duplicates,
             'all_received_messages': self.all_received_messages(),
             'received_num': sum(
@@ -77,7 +80,7 @@ class Trial:
             'constraints': constraints,
             'max_utility': self.ctx.utility(all_messages).value(),
             'avg_latency': avg_latency,
-            'context': self.ctx,
+            'agents_num': len(self.agents),
         }
 
     def all_received_messages(self):
@@ -86,8 +89,8 @@ class Trial:
             result += agent.received_messages
         return result
 
-    def print_stats(self):
-        stats = self.stats()
+    @staticmethod
+    def print_stats(stats):
         print(
             (
                 "Received # {}, sent: {}, "
@@ -109,7 +112,7 @@ class Trial:
         ))
         print("AVG data rate: {:.3f} Mbps with avg latency of {}".format(
             sum([m.size for m in stats['no_duplicates'].all()]) * 8 / 10**6
-            / self.t_end,
+            / stats['t_end'],
             stats['avg_latency'],
         ))
 
@@ -196,6 +199,23 @@ class FixedRatioTrial(Trial):
 
     def set_drop_rate(self, drop_rate):
         self.agent_kwargs = {'drop_ratio': drop_rate}
+
+
+class GreedyTrial(Trial):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.agent_cls = GreedyConstrainedAgent
+        self.agent_kwargs = {
+            'constraints': {},
+        }
+
+    @property
+    def constraints(self):
+        return self.agent_kwargs['constraints']
+
+    @constraints.setter
+    def constraints(self, value):
+        self.agent_kwargs['constraints'] = value
 
 
 class TreeTrial(Trial):

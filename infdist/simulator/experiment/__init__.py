@@ -10,6 +10,7 @@ __all__ = [
     'TEndExperiment',
     'PlaygroundExperiment',
     'VaryingBackgroundTrafficExperiment',
+    'GoodputVsRateExperiment',
 ]
 
 from .base_experiment import BaseExperiment
@@ -25,3 +26,4 @@ from .playground_experiment import PlaygroundExperiment
 from .varying_background_traffic_experiment import (
     VaryingBackgroundTrafficExperiment
 )
+from .goodput_vs_rate import GoodputVsRateExperiment

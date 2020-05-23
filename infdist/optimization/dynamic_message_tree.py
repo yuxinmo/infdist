@@ -22,7 +22,7 @@ class DynamicMessageTree:
         self.t_end = t_end
         self.debug = False
         self.constraints = constraints
-        self.limit_history = -1
+        self.limit_history = 100
 
     @property
     def latency(self):
@@ -122,7 +122,6 @@ class DynamicMessageTree:
         print("Generating tree visualization finished")
 
     def decide(self, message):
-        return True
         start_time = datetime.now()
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
@@ -131,6 +130,8 @@ class DynamicMessageTree:
         self.montecarlo.simulate(1500)
         simulate_time = datetime.now()
 
+        # print('################')
+        # print(message)
         # print(self.verbose_repr())
         # if len(TreeNodeWrapper(
         #        self.montecarlo.root_node).future_messages) < 6:
@@ -159,7 +160,6 @@ class DynamicMessageTree:
 
         if message in TreeNodeWrapper(choice).sent_messages.all():
             return True
-        print("DONT SEND")
         return False
 
     def debug_once(self, emphasized_message):

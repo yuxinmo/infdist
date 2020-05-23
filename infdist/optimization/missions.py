@@ -10,6 +10,7 @@ POSITION_DATA_TYPE = 'position'
 
 presets = [
     {
+        'ident': 0,
         'max_depl_rate_mi': lambda: np.random.normal(0.2, 0.2),
         'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
         't_gen': lambda t: abs(np.random.normal(t, 0.1)),
@@ -18,16 +19,56 @@ presets = [
         'message_size': lambda i: 2048,
     },
     {
+        'ident': 1,
         'max_depl_rate_mi': lambda: np.random.normal(0.3, 0.01),
         'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
         't_gen': lambda t: abs(np.random.normal(t, 0.001)),
         'topic_weight': lambda i: i*1000+1
     },
     {
+        'ident': 2,
         'max_depl_rate_mi': lambda: 0.7,
         'max_depl_rate': lambda mi: mi,
         't_gen': lambda t: t,
         'topic_weight': lambda i: i**(0.1)+1,
+    },
+    {
+        'ident': 3,
+        'max_depl_rate_mi': lambda: np.random.normal(0.2, 0.2),
+        'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
+        't_gen': lambda t: abs(np.random.normal(t, 0.1)),
+        'topic_weight': lambda i: 5,
+        'message_size': lambda i: 2048,
+    },
+    {
+        'ident': 4,
+        'max_depl_rate_mi': lambda: 0.3,
+        'max_depl_rate': lambda mi: mi,
+        't_gen': lambda t: abs(np.random.normal(t, 0.01)),
+        'topic_weight': lambda i: 5,
+        'message_size': lambda i: 2048,
+        't_start': lambda sender: sender/(8*6) + 1/(8*6)*0.2,
+        'f': 6,
+    },
+    {
+        'ident': 5,
+        'max_depl_rate_mi': lambda: 0.3,
+        'max_depl_rate': lambda mi: mi,
+        't_gen': lambda t: abs(np.random.normal(t, 0.01)),
+        'topic_weight': lambda i: 5,
+        'message_size': lambda i: 2048,
+        't_start': lambda sender: sender/(8*6) + 1/(8*6)*0.2,
+        'f': 1,
+    },
+    {
+        'ident': 6,
+        'max_depl_rate_mi': lambda: 0.3,
+        'max_depl_rate': lambda mi: mi,
+        't_gen': lambda t: abs(np.random.normal(t, 0.01)),
+        'topic_weight': lambda i: 5,
+        'message_size': lambda i: 2048,
+        't_start': lambda sender: sender/(8*2) + 1/(8*2)*0.2,
+        'f': 2,
     },
 ]
 
@@ -48,9 +89,9 @@ def generate_periodic_messages(
         Message(
             sender,
             set(receivers) - set([sender]),
-            presets[msgset]['t_gen'](t),
+            msgset['t_gen'](t),
             gen_data_type_name(sender),
-            presets[msgset]['message_size'](sender),
+            msgset['message_size'](sender),
             data_f(t)
         )
         for t in np.arange(t_start, t_end, 1/f)
@@ -62,7 +103,7 @@ def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
                            msgset=0,
                            ):
 
-    mi = presets[msgset]['max_depl_rate_mi']()
+    mi = msgset['max_depl_rate_mi']()
 
     def batt_level(t):
         a = (level_start - level_end) / (t_start - t_end)
@@ -70,7 +111,7 @@ def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
         level = a*t+b
         return {
             'battery_level': level,
-            'max_depl_rate': presets[msgset]['max_depl_rate'](mi),
+            'max_depl_rate': msgset['max_depl_rate'](mi),
         }
 
     messages = generate_periodic_messages(
@@ -102,7 +143,7 @@ def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
                 'sender': sender,
                 'initial_t_start': t_start,
                 'T': 1/f,
-                'size': presets[msgset]['message_size'](sender),
+                'size': msgset['message_size'](sender),
             }
 
     return (
@@ -115,7 +156,7 @@ def generate_batt_messages(t_end, sender, receivers, t_start=0, f=1,
                     aggregation_cls=AggregationMostRecent,
                     message_forecast_cls=forecast_cls,
                     message_forecast_kwargs=forecast_kwargs(data_type_name),
-                    weight=presets[msgset]['topic_weight'](sender),
+                    weight=msgset['topic_weight'](sender),
                 )
                 for data_type_name in set(
                     m.data_type_name
@@ -161,8 +202,14 @@ def generate_simple_3D_reconstruction(
         # level_end = level_start * np.random.random()
         messages, context = generate_batt_messages(
             t_end, sender, receivers,
-            f=np.random.normal(3, 0.1),
-            t_start=int(np.random.random()) + sender*30,
+            f=msgset.get(
+                'f',
+                np.random.normal(3, 0.1),
+            ),
+            t_start=msgset.get(
+                't_start',
+                lambda _: int(np.random.random())
+            )(sender),
             level_start=level_start,
             level_end=level_end,
             msgset=msgset,

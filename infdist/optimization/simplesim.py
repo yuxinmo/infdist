@@ -192,44 +192,63 @@ def create_throughput_constraint_violations(throughput, timeslot_length):
     return throughput_constraint_violations
 
 
-def create_rate_constraint_violations(timeslot_length):
-    coef_init = [-1]
-    intercept_init = [0.8]
-    Ropt = 0.8
-    alpha = 0.2
+def create_rate_constraint_violations(timeslot_length, alpha=0.25):
+    scale = 12
+    # eta0 = 0.0002
+    # eta0 = 0.0002
+    eta0 = 0.00005
 
     rate_model = SGDRegressor(
-        loss='huber',
-        alpha=0.0001,
-        shuffle=True,
+        # loss='hinge',
+        loss='squared_epsilon_insensitive',
+        alpha=0,
+        # shuffle=True,
         verbose=0,
         epsilon=0.1,
-        # learning_rate='constant',
-        eta0=1,
+        learning_rate='constant',
+        eta0=eta0,
+        power_t=0.3,
+        # fit_intercept=False,
     )
-    model_initialized = False
+    train_data = []
+    params_history = []
 
-    def update_model(received_messages, t):
-        nonlocal model_initialized
-        if len(received_messages) == 0:
-            return
-        window = messageset_to_window(received_messages, t-0.5)
+    rate_model.eta0 = 1
+    rate_model.fit(
+        [[0]], [0],
+        coef_init=[[0]],
+        # coef_init=[[-3/8]],
+        intercept_init=[0],
+    )
+    rate_model.eta0 = eta0
+    # print(
+    #     f'initial coef: {rate_model.coef_}, {rate_model.intercept_}'
+    # )
 
-        X = [[average_throughput(window)]]
-        Y = [average_rate([
+    def update_model(all_messages, t):
+        window = messageset_to_window(all_messages, t-0.5)
+        without_sent = [
                 m
                 for m in window
                 if m.t_rcv is not None
-        ])]
-        if not model_initialized:
-            rate_model.fit(
-                X, Y,
-                coef_init=coef_init,
-                intercept_init=intercept_init,
-            )
-            model_initialized = True
-        else:
-            rate_model.partial_fit(X, Y)
+        ]
+
+        if len(without_sent) == 0:
+            return
+
+        throughput = average_throughput(window)
+        rate = average_rate(without_sent)
+        X = [[throughput*scale]]
+        Y = [rate*scale]
+        train_data.append((throughput, rate))
+        # print(
+        #     f'Observing ({X}, {Y}) -> '
+        #     f'new coef: {rate_model.coef_}, {rate_model.intercept_}'
+        # )
+        rate_model.partial_fit(X, Y)
+        params_history.append(
+            (t, rate_model.coef_[0], rate_model.intercept_[0])
+        )
 
     def messageset_to_window(messageset, t):
         msgs = messageset.gen_after(t-timeslot_length)
@@ -243,7 +262,7 @@ def create_rate_constraint_violations(timeslot_length):
         return modeled_window_value(messageset_to_window(messageset, t))
 
     def average_throughput(window):
-        assert window[-1].t_gen - window[0].t_gen < timeslot_length
+        assert window[-1].t_gen - window[0].t_gen <= timeslot_length, window
         return sum([
             m.size*8/timeslot_length/10**6
             for m in window
@@ -251,10 +270,11 @@ def create_rate_constraint_violations(timeslot_length):
 
     def modeled_window_value(window):
         throughput = average_throughput(window)
-        return rate_model.predict([[throughput]])[0]
+        result = rate_model.predict([[throughput*scale]])[0]
+        return result/scale
 
     def _rate_constraint_violated(window):
-        if modeled_window_value(window) >= Ropt - alpha:
+        if modeled_window_value(window) <= alpha:
             return 0
         else:
             return 1
@@ -288,15 +308,27 @@ def create_rate_constraint_violations(timeslot_length):
         return average_rate(messageset_to_window(messageset, t))
 
     def average_rate(window):
-        rates = [
-            (m.size*8/10**6)/(m.t_rcv - m.t_gen)
-            for m in window
-        ]
+        # rates = [
+        #     (m.size*8/10**6)/(m.t_rcv - m.t_gen)
+        #     for m in window
+        # ]
 
-        return sum(rates)/len(rates)
+        # return sum(rates)/len(rates)
+        avg_data_inflight = sum([
+            m.size * (m.t_rcv - m.t_gen) * 8 / 10**6
+            for m in window
+        ])/timeslot_length
+        avg_latency = sum([
+            (m.t_rcv - m.t_gen)
+            for m in window
+        ])/len(window)
+        return abs(avg_data_inflight/avg_latency - avg_data_inflight/0.01756)
+        # return avg_data_inflight/0.01756
 
     rate_constraint_violations.compute_value = compute_value
     rate_constraint_violations.modeled_value = modeled_value
     rate_constraint_violations.update_model = update_model
+    rate_constraint_violations.train_data = train_data
+    rate_constraint_violations.model_params_history = params_history
 
     return rate_constraint_violations

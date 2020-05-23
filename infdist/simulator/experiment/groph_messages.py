@@ -12,10 +12,13 @@ class GraphMessagesExperiment(BaseExperiment):
     def print_result(self):
         pass
 
+    def save_results(self):
+        pass
+
     def save_graphs(self, f=None):
         msgs = self.result.messages
         mission_context = self.result.ctx
-        simplesim.latency(msgs, 0)
+        simplesim.apply_latency(msgs, 0)
         write_messageset_plots(
             msgs,
             mission_context,
