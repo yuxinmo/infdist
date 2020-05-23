@@ -20,7 +20,7 @@ class DynamicMessageTree:
         self.messages_context = messages_context
         self.max_utility = None
         self.t_end = t_end
-        self.debug = False
+        self.debug = True
         self.constraints = constraints
         self.limit_history = -1
 
@@ -105,12 +105,12 @@ class DynamicMessageTree:
             message, False
         )
 
-    def decide(self, message):
+    def decide(self, message, simulations_num=1500):
         start_time = datetime.now()
         self.reinit_mcts(message)
         mcts_init_time = datetime.now()
         message.t_rcv = message.t_gen + self.optimistic_latency
-        self.montecarlo.simulate(1500)
+        self.montecarlo.simulate(simulations_num)
         simulate_time = datetime.now()
 
         # print(self.verbose_repr())

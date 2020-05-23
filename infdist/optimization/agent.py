@@ -82,6 +82,7 @@ class BaseTreeAgent(BaseAgent):
     def __init__(self, *args, **kwargs):
         self.agents = kwargs.pop('agents')
         self.constraints = kwargs.pop('constraints')
+        self.simulations_num = kwargs.pop('simulations_num', 1500)
         limit_history = kwargs.pop('limit_history', 0)
         super().__init__(*args, **kwargs)
 
@@ -100,7 +101,7 @@ class BaseTreeAgent(BaseAgent):
         self.tree.progress_time(message.t_gen)
         est_sent_message = copy(message)
         est_sent_message.t_sent = self.now_func()
-        if self.tree.decide(est_sent_message):
+        if self.tree.decide(est_sent_message, self.simulations_num):
             return self.ACT_SEND
         return self.ACT_DROP
 
@@ -135,6 +136,7 @@ class FullKnowledgeAgent(BaseTreeAgent):
 class EstimatingAgent(BaseTreeAgent):
     def __init__(self, *args, **kwargs):
         self.window_size = kwargs.pop('window_size')
+        self.future_messages_num = kwargs.pop('future_messages_num', 30)
         super().__init__(*args, **kwargs)
         self.forecast = MessageForecast(self.messages_context)
 
@@ -158,7 +160,9 @@ class EstimatingAgent(BaseTreeAgent):
         self.tree.update_future(
             MessageSet(
                 t_end=self.forecast.estimate_t_end(),
-                messages=list(islice(future_generator, 30))
+                messages=list(
+                    islice(future_generator, self.future_messages_num)
+                )
             )
         )
         return super().process_message(message)
