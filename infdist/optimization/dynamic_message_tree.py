@@ -22,7 +22,7 @@ class DynamicMessageTree:
         self.t_end = t_end
         self.debug = True
         self.constraints = constraints
-        self.limit_history = -1
+        self.limit_history = 100
 
     @property
     def latency(self):
@@ -30,7 +30,7 @@ class DynamicMessageTree:
 
     @latency.setter
     def latency(self, latency):
-        self.pessymistic_latency = latency
+        self.pessymistic_latency = latency*2
         self.optimistic_latency = latency
 
     def reinit_mcts(self, message):
@@ -76,7 +76,7 @@ class DynamicMessageTree:
     def update_future(self, future_messages):
         self.t_end = future_messages.t_end
         self.past_messages.t_end = self.t_end
-        simplesim.latency(
+        simplesim.apply_latency(
             future_messages,
             self.optimistic_latency,
         )
@@ -105,6 +105,22 @@ class DynamicMessageTree:
             message, False
         )
 
+    def generate_tree_visualization(self, message, simulations_num=100):
+        print("Generating tree visualization started")
+        for i in range(1, simulations_num):
+            print(f'{i}/{simulations_num}')
+            self.montecarlo.simulate(1)
+            self.show_graph(
+                None,
+                message,
+                f=f'/tmp/mcts/{i:03d}',
+                sim_num=i
+            )
+        self.montecarlo.simulate(200)
+
+        DynamicMessageTree.DEBUGGED_ONCE = True
+        print("Generating tree visualization finished")
+
     def decide(self, message, simulations_num=1500):
         start_time = datetime.now()
         self.reinit_mcts(message)
@@ -113,10 +129,12 @@ class DynamicMessageTree:
         self.montecarlo.simulate(simulations_num)
         simulate_time = datetime.now()
 
+        # print('################')
+        # print(message)
         # print(self.verbose_repr())
         # if len(TreeNodeWrapper(
-        #        self.montecarlo.root_node).future_messages) < 5:
-        #     self.debug_once()
+        #        self.montecarlo.root_node).future_messages) < 6:
+        #     self.debug_once(message)
 
         try:
             while (
@@ -143,11 +161,11 @@ class DynamicMessageTree:
             return True
         return False
 
-    def debug_once(self):
+    def debug_once(self, emphasized_message):
         if not getattr(DynamicMessageTree, "DEBUGGED_ONCE", False):
             print("Debugging!")
             DynamicMessageTree.DEBUGGED_ONCE = True
-            self.show_graph()
+            self.show_graph(None, emphasized_message)
             print(self.verbose_repr())
             print("Your turn to debug!")
 
@@ -157,17 +175,23 @@ class DynamicMessageTree:
         import time
         time.sleep(1)
 
-    def show_graph_once(self, node=None):
+    def show_graph_once(self, node=None, emphasized_message=None):
         self.show_graph_once = lambda _: None
-        show_graph(node)
+        show_graph(node, emphasized_message)
 
-    def show_graph(self, node=None):
+    def show_graph(
+        self,
+        node=None,
+        emphasized_message=None,
+        f="/tmp/graph.png",
+        sim_num=1500,
+    ):
         if node is None:
             node = self.montecarlo.root_node
-        show_graph(node)
+        show_graph(node, emphasized_message, f=f, sim_num=sim_num)
 
     def verbose_repr(self):
-        fields = ['sender', 't_sent', 't_rcv', 'data_type_name']
+        fields = ['sender', 't_sent', 't_rcv', 'data_type_name', 'size']
         return (
             "####\n"
             "Past:\n {}\n"

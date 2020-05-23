@@ -127,6 +127,7 @@ class PeriodicTypeForecast(BaseTypeForecast):
         receivers,
         T,
         sender,
+        size,
         initial_t_start=0,
     ):
         self.data_type_name = data_type_name
@@ -135,10 +136,12 @@ class PeriodicTypeForecast(BaseTypeForecast):
         self.battery_level = battery_level
         self.receivers = receivers
         self.T = T
+        self.initial_t_start = initial_t_start
         self.t_start = initial_t_start
         self.t_start_samples = Samples()
         self.previous_message = None
         self.sender = sender
+        self.size = size
 
     def register_message(self, message):
         assert self.sender == message.sender
@@ -158,6 +161,7 @@ class PeriodicTypeForecast(BaseTypeForecast):
             set(self.receivers) - set([self.sender]),
             t_gen,
             self.data_type_name,
+            self.size,
             {
                 'battery_level': self.battery_level,
                 'max_depl_rate': self.max_depl_rate,
@@ -166,6 +170,8 @@ class PeriodicTypeForecast(BaseTypeForecast):
         )
 
     def message_generator(self, t_start, given_messages):
+        if t_start < self.initial_t_start:
+            t_start = self.initial_t_start
         start = t_start + self.T - (t_start - self.t_start) % self.T
         for t in np.arange(start, self.t_end, self.T):
             message = self.create_message(t)

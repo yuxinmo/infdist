@@ -79,14 +79,13 @@ class TreeNodeWrapper:
         else:
             score = -1
         return (
-            "{} msg sender: {} t_sent: {:.3f} t_gen: {:.3f}\n"
+            "{} msg sender: {} t_gen: {:.3f}\n"
             "score: {:.5f} ({:.2f})\n"
             "mean val: {:.5f} ({} visits)\n"
             "messages: {} sent, {} to go"
         ).format(
             getattr(self.message, 'data_type_name', 'unk'),
             repr(getattr(self.message, 'sender', 'unk')),
-            getattr(self.message, 't_sent', -1),
             getattr(self.message, 't_gen', -1),
             score, self.dynamic_utility.value(),
             self.node.win_value / (self.node.visits or 1),

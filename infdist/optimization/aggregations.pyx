@@ -51,10 +51,17 @@ class AggregationMostRecent(Aggregation):
         t_end = messages.t_end
 
         for m, next_m in zip(msgs[:-1], msgs[1:]):
+
             gain = self._integration_step(m, next_m, t_end)
-            m.gained_utility(
-                gain*debug_weight/(min(next_m.t_rcv, t_end)-m.t_rcv)
-            )
+
+            next_t = next_m.t_rcv if next_m.t_rcv < t_end else t_end
+            if next_t > m.t_rcv:
+                m.gained_utility(
+                    gain*debug_weight/(next_t-m.t_rcv)
+                )
+            else:
+                m.gained_utility(0)
+
             result += gain
         result += self.utility_func.integrate(msgs[-1], msgs[-1].t_rcv, t_end)
         return result

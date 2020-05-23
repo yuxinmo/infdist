@@ -27,9 +27,13 @@ def avg(l):
 
 
 class DropRateVsUtilityExperiment(BaseExperiment):
+    GRAPH_WIDTH = 537
+    GRAPH_HEIGHT = 22
+    NORMALIZE_UTILITY = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        drop_rates_num = 30
+        drop_rates_num = 50
         self.drop_rates = [
             i/drop_rates_num
             for i in range(drop_rates_num+1)
@@ -89,20 +93,29 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         if everything_fine:
             print("All constraints met.")
 
-    def _get_single_result_graph(
-        self, results, name, xs_func, ys_func, style,
+    def _get_single_result_graph_data(
+        self, results, name, xs_func, ys_func,
     ):
-        symbol = 3 if style == 0 else 4
-        color = _PLOTLY_COLORS[style]
-        dash = 'dash' if style == 0 else 'dot'
         xs = [
             xs_func(stat)
             for stat in sum(results.values(), [])
         ]
         ys = [
-            ys_func(stat) * 100
+            ys_func(stat)
             for stat in sum(results.values(), [])
         ]
+        return xs, ys
+
+    def _get_single_result_graph(
+        self, results, name, xs_func, ys_func, style,
+    ):
+        xs, ys = self._get_single_result_graph_data(
+            results, name, xs_func, ys_func,
+        )
+
+        symbol = 3 if style == 0 else 4
+        color = _PLOTLY_COLORS[style]
+        dash = 'dash' if style == 0 else 'dot'
 
         fig = px.scatter(
             x=xs,
@@ -118,63 +131,70 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 'dash': dash,
             }
         return fig
-        # return go.Scatter(
-        #     name=name,
-        #     x=xs,
-        #     y=ys,
-        #     mode='markers',
-        #     marker_symbol=symbol,
-        #     marker_size=4,
-        # )
 
     def get_graph_name(self):
         return 'cumulative'
 
-    def get_cumulative_graph(self):
-        g = {}
-        for i, trial_name in enumerate([
+    def get_trial_names(self):
+        return [
             trial_cls.__name__ for trial_cls in self.trial_clss
-        ]):
+        ]
+
+    def get_cumulative_graph(self, mode='achieved', trial_names=None):
+        if trial_names is None:
+            trial_names = self.get_trial_names()
+        g = {}
+        for i, trial_name in enumerate(trial_names):
             g[trial_name] = {}
-            g[trial_name]['set'] = self._get_single_result_graph(
-                self.result[trial_name],
-                trial_name + ' set',
-                lambda stat: stat['set_drop_rate'],
-                lambda stat: stat['total_utility'],
-                style=i,
-            )
-            g[trial_name]['achieved'] = self._get_single_result_graph(
-                self.result[trial_name],
-                trial_name + ' achieved',
-                lambda stat: 1-(
-                    stat['sent_received_num']/stat['total_messages']),
-                lambda stat: stat['total_utility']/stat['max_utility'],
-                style=i,
-            )
+            if mode == 'set':
+                g[trial_name]['set'] = self._get_single_result_graph(
+                    self.result[trial_name],
+                    trial_name + ' set',
+                    lambda stat: stat['set_drop_rate'],
+                    lambda stat: stat['total_utility'],
+                    style=i,
+                )
+            elif mode == 'achieved':
+                g[trial_name]['achieved'] = self._get_single_result_graph(
+                    self.result[trial_name],
+                    trial_name + ' achieved',
+                    lambda stat: 1-(
+                        stat['sent_received_num']/stat['total_messages']),
+                    lambda stat: stat['total_utility'] / (
+                        stat['max_utility'] if self.NORMALIZE_UTILITY
+                        else 1
+                    ),
+                    style=i,
+                )
+            else:
+                raise Exception("Unknown mode")
 
         return [
-            g[trial_name]['achieved']
-            for trial_name in [
-                trial_cls.__name__ for trial_cls in self.trial_clss
-            ]
+            g[trial_name][mode]
+            for trial_name in g.keys()
         ]
 
     def get_graphs(self):
-        graphs = {
-            'histogram_fixed': self.get_message_utility_histogram(),
-            'histogram_tree': self.get_message_utility_histogram('TreeTrial'),
-            'cdf_fixed': self.get_message_utility_cdf(),
-            'cdf_tree': self.get_message_utility_cdf('TreeTrial'),
-        }
+        graphs = {}
+        for trial_name in [
+            trial_cls.__name__ for trial_cls in self.trial_clss
+        ]:
+            graphs[f'histogram_{trial_name}'] = (
+                self.get_message_utility_histogram(trial_name)
+            )
+            graphs[f'cdf_{trial_name}'] = (
+                self.get_message_utility_cdf(trial_name)
+            )
+
         graphs['drop_rate_experiment'] = self.make_final_figure(
             self.get_cumulative_graph(),
-            graphs['histogram_fixed'][0],
-            graphs['cdf_fixed'][0],  # TODO: instead of fixed we should have sth like random  # NOQA
+            graphs['histogram_FixedRatioTrial'][0],
+            graphs['cdf_FixedRatioTrial'][0],
         )
         graphs['legend'] = self.extract_legend(
             self.get_cumulative_graph(),
-            graphs['histogram_fixed'][0],
-            graphs['cdf_fixed'][0],  # TODO: instead of fixed we should have sth like random  # NOQA
+            graphs['histogram_FixedRatioTrial'][0],
+            graphs['cdf_FixedRatioTrial'][0],
         )
         return graphs
 
@@ -209,8 +229,8 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                 pad=0
             ),
             autosize=False,
-            width=537,
-            height=22,
+            width=self.GRAPH_WIDTH,
+            height=self.GRAPH_HEIGHT,
         )
         fig.update_yaxes(
             range=[100, 100.0001],
@@ -238,11 +258,14 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             row=1, col=1,
         )
         fig.update_yaxes(
-            title_text="% of utility",
+            title_text="% of utility" if self.NORMALIZE_UTILITY else 'utility',
             title_standoff=y_title_standoff,
-            range=[0, 100],
             row=1, col=1,
         )
+        if self.NORMALIZE_UTILITY:
+            fig.update_yaxes(
+                range=[0, 100],
+            )
 
         fig.append_trace(
             histogram,
@@ -284,9 +307,17 @@ class DropRateVsUtilityExperiment(BaseExperiment):
     def _prepare_histogram_data(
         self, stat,
     ):
-        ctx = stat['context']
+        from optimization import missions
+
+        messages, ctx = missions.generate_simple_3D_reconstruction(
+            self.t_end,
+            msgset=self.msgset,
+            senders=set(range(self.agents_num)),
+        )
+
+        # ctx = trial.ctx
         utility = ctx.utility(stat['all_received_messages']).value()
-        utility
+        utility  # compute ganied values
         gained_values = [
             getattr(m, 'gained_value')
             for m in stat['all_received_messages'].all()

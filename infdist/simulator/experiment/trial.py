@@ -5,6 +5,7 @@ from optimization.agent import (  # NOQA
     FixedRatioAgent,
     FullCommAgent,
     FullKnowledgeAgent,
+    GreedyConstrainedAgent,
 )
 
 from simulator.network import NS3Network
@@ -59,9 +60,11 @@ class Trial:
             constraints[name] = constraint(no_duplicates)
 
         all_messages = deepcopy(self.messages)
-        simplesim.latency(all_messages, 0)
+        simplesim.apply_latency(all_messages, 0)
 
         return {
+            'all_messages': all_messages,
+            't_end': self.t_end,
             'no_duplicates': no_duplicates,
             'all_received_messages': self.all_received_messages(),
             'received_num': sum(
@@ -77,7 +80,7 @@ class Trial:
             'constraints': constraints,
             'max_utility': self.ctx.utility(all_messages).value(),
             'avg_latency': avg_latency,
-            'context': self.ctx,
+            'agents_num': len(self.agents),
         }
 
     def all_received_messages(self):
@@ -86,8 +89,8 @@ class Trial:
             result += agent.received_messages
         return result
 
-    def print_stats(self):
-        stats = self.stats()
+    @staticmethod
+    def print_stats(stats):
         print(
             (
                 "Received # {}, sent: {}, "
@@ -107,9 +110,9 @@ class Trial:
             stats['sent_received_num']/stats['total_messages']*100,
             stats['sent_received_num']/stats['sent_num']*100,
         ))
-        print("Achieved data rate: {:.3f} Mbps with avg latency of {}".format(
-            stats['sent_received_num']*self.net.packet_size * 8 / 10**6
-            / self.t_end,
+        print("AVG data rate: {:.3f} Mbps with avg latency of {}".format(
+            sum([m.size for m in stats['no_duplicates'].all()]) * 8 / 10**6
+            / stats['t_end'],
             stats['avg_latency'],
         ))
 
@@ -185,6 +188,7 @@ class Trial:
             )
 
         simulator.schedule(self.t_end, self.finish_mission)
+        simulator.stop(self.t_end+1)
         simulator.run()
 
 
@@ -195,6 +199,23 @@ class FixedRatioTrial(Trial):
 
     def set_drop_rate(self, drop_rate):
         self.agent_kwargs = {'drop_ratio': drop_rate}
+
+
+class GreedyTrial(Trial):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.agent_cls = GreedyConstrainedAgent
+        self.agent_kwargs = {
+            'constraints': {},
+        }
+
+    @property
+    def constraints(self):
+        return self.agent_kwargs['constraints']
+
+    @constraints.setter
+    def constraints(self, value):
+        self.agent_kwargs['constraints'] = value
 
 
 class TreeTrial(Trial):
@@ -231,15 +252,15 @@ class TreeTrial(Trial):
 
     def add_throughput_constraint(self, throughput, timeslot_length):
         # self.agent_kwargs['window_size'] = timeslot_length
-        message_size = self.net.packet_size
         self.constraints = {
             'TPUT': simplesim.create_throughput_constraint_violations(
-                throughput, timeslot_length, message_size,
+                throughput, timeslot_length,
             ),
         }
+        return self.constraints
 
     def set_throughput(self, throughput):
-        self.add_throughput_constraint(throughput, 1)
+        return self.add_throughput_constraint(throughput, 2.5)
 
     def set_drop_rate(self, drop_rate):
         assert not self.drop_rate_set

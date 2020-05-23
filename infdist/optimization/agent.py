@@ -3,6 +3,7 @@ from itertools import islice
 import random
 
 from .dynamic_message_tree import DynamicMessageTree
+from .dynamic_models import DynamicMessageSet
 from .models import MessageSet
 from .message_forecast import MessageForecast
 
@@ -10,6 +11,7 @@ from .message_forecast import MessageForecast
 class BaseAgent:
     ACT_DROP = 0
     ACT_SEND = 1
+    ACT_NO_DECISION = -1
 
     def __init__(self, ident, net, messages_context, now_func):
         self.ident = ident
@@ -76,7 +78,42 @@ class FixedRatioAgent(BaseAgent):
         return self.ACT_DROP
 
 
-class BaseTreeAgent(BaseAgent):
+class ConstrainedAgent(BaseAgent):
+    def __init__(self, *args, **kwargs):
+        self.constraints = kwargs.pop('constraints')
+        super().__init__(*args, **kwargs)
+
+    def process_message(self, message):
+        for constraint in self.constraints.values():
+            constraint.update_model(
+                self.received_messages + self.sent_messages, self.now_func()
+            )
+        return self.ACT_NO_DECISION
+
+
+class GreedyConstrainedAgent(ConstrainedAgent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def process_message(self, message):
+        super().process_message(message)
+        est_sent_message = copy(message)
+        est_sent_message.t_sent = self.now_func()
+
+        all_messages = self.received_messages + self.sent_messages
+        all_messages.append(est_sent_message)
+        messages = DynamicMessageSet()
+        messages = messages.add_messageset(all_messages)
+
+        for constraint in self.constraints.values():
+            if constraint(
+                messages, True
+            ):
+                return self.ACT_DROP
+        return self.ACT_SEND
+
+
+class BaseTreeAgent(ConstrainedAgent):
     DEFAULT_T_END = 10
 
     def __init__(self, *args, **kwargs):
@@ -96,6 +133,7 @@ class BaseTreeAgent(BaseAgent):
         self.active = True
 
     def process_message(self, message):
+        super().process_message(message)
         if not self.active:
             return self.ACT_DROP
         self.tree.progress_time(message.t_gen)

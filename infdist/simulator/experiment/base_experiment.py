@@ -1,3 +1,4 @@
+import os
 import pickle
 import plotly.graph_objs as go
 import plotly.io as pio
@@ -18,10 +19,14 @@ class BaseExperiment:
         self.trial_cls = TreeTrial
         self._example_trial = None
 
-    def prepare_trial(self, trial_cls=None):
+    def prepare_trial(self, trial_cls=None, msgset=None):
         if trial_cls is None:
             trial_cls = self.trial_cls
-        t = trial_cls(self.agents_num, self.t_end, self.msgset)
+
+        if msgset is None:
+            msgset = self.msgset
+
+        t = trial_cls(self.agents_num, self.t_end, msgset)
         return t
 
     def progress(self, percent, debug, start_time=None):
@@ -44,13 +49,20 @@ class BaseExperiment:
     def run(self, debug=DEBUG_NONE):
         t = self.prepare_trial()
         t.run()
-        self.result = t
+        self.result = self.get_result(t)
+        self.resulting_trial = t
+
+    def get_result(self, trial):
+        return trial
 
     def print_result(self):
-        self.result.print_stats()
+        self.resulting_trial.print_stats(self.resulting_trial.stats())
 
     def get_graphs(self):
         return {}
+
+    def get_publication_graphs(self):
+        return self.get_graphs()
 
     def get_graph_title(self, graph_name):
         return graph_name
@@ -74,8 +86,10 @@ class BaseExperiment:
             open(filename, 'wb')
         )
 
-    def save_graphs(self, f=None, graph_names=None):
-        graphs = self.get_graphs()
+    def save_graphs(self, f=None, graph_names=None, graphs=None):
+        if graphs is None:
+            graphs = self.get_graphs()
+
         if graph_names is None:
             graph_names = graphs
 
@@ -92,3 +106,23 @@ class BaseExperiment:
                 pio.write_image(fig, f.format(graph_name))
             else:
                 pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))
+
+    def save_publication_graphs(self, publication_dir):
+        graphs = self.get_publication_graphs()
+        for graph_name, fig in graphs.items():
+            fig.update_layout(
+                width=400,
+                height=300,
+                margin=go.layout.Margin(
+                    l=0,  # NOQA
+                    r=0,
+                    b=0,
+                    t=0,
+                    pad=0
+                ),
+                template='plotly_white',
+            )
+            pio.write_image(
+                fig,
+                os.path.join(publication_dir, graph_name + '.pdf')
+            )
