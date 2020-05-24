@@ -192,7 +192,11 @@ def create_throughput_constraint_violations(throughput, timeslot_length):
     return throughput_constraint_violations
 
 
-def create_rate_constraint_violations(timeslot_length, alpha=0.25):
+def create_rate_constraint_violations(
+    timeslot_length,
+    alpha=0.25,
+    delta=0.01756,
+):
     scale = 12
     # eta0 = 0.0002
     # eta0 = 0.0002
@@ -322,7 +326,7 @@ def create_rate_constraint_violations(timeslot_length, alpha=0.25):
             (m.t_rcv - m.t_gen)
             for m in window
         ])/len(window)
-        return abs(avg_data_inflight/avg_latency - avg_data_inflight/0.01756)
+        return abs(avg_data_inflight/avg_latency - avg_data_inflight/delta)
         # return avg_data_inflight/0.01756
 
     rate_constraint_violations.compute_value = compute_value
