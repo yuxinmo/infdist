@@ -6,7 +6,7 @@ from infdist.optimization.models import Message
 
 class ROS2NativeMessage:
     def __init__(self, msg, sender, receivers, data_type_name,
-                 data, stamp, t_rcv=None, publisher=None):
+                 data, stamp, size, t_rcv=None, publisher=None):
         self.msg = msg
         self.sender = sender
         self.publisher = publisher
@@ -15,6 +15,7 @@ class ROS2NativeMessage:
         self.data_type_name = data_type_name
         self.data = data
         self.stamp = stamp
+        self.size = size
 
 
 class ROS2Network(BaseNetwork):
@@ -30,6 +31,7 @@ class ROS2Network(BaseNetwork):
             receivers=native_message.receivers,
             t_gen=t_gen,
             data_type_name=native_message.data_type_name,
+            size=native_message.size,
             data=native_message.data,
         )
 
