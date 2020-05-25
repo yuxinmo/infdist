@@ -196,11 +196,19 @@ def create_rate_constraint_violations(
     timeslot_length,
     alpha=0.25,
     delta=0.01756,
+    eta0=0.00005,
+    coef_init=None,
+    intercept_init=None,
 ):
+    if coef_init is None:
+        coef_init = [[0]]
+
+    if intercept_init is None:
+        intercept_init = [0]
+
     scale = 12
     # eta0 = 0.0002
     # eta0 = 0.0002
-    eta0 = 0.00005
 
     rate_model = SGDRegressor(
         # loss='hinge',
@@ -219,10 +227,9 @@ def create_rate_constraint_violations(
 
     rate_model.eta0 = 1
     rate_model.fit(
-        [[0]], [0],
-        coef_init=[[0]],
-        # coef_init=[[-3/8]],
-        intercept_init=[0],
+        coef_init, intercept_init,
+        coef_init=coef_init,
+        intercept_init=intercept_init,
     )
     rate_model.eta0 = eta0
     # print(
