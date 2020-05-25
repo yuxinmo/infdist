@@ -118,7 +118,6 @@ class BaseTreeAgent(ConstrainedAgent):
 
     def __init__(self, *args, **kwargs):
         self.agents = kwargs.pop('agents')
-        self.constraints = kwargs.pop('constraints')
         self.simulations_num = kwargs.pop('simulations_num', 1500)
         limit_history = kwargs.pop('limit_history', 0)
         super().__init__(*args, **kwargs)
@@ -184,6 +183,8 @@ class EstimatingAgent(BaseTreeAgent):
 
     def register_received(self, message):
         super().register_received(message)
+        if message.t_rcv is None:
+            message.t_rcv = self.now_func()
         self.forecast.register(message)
 
     def process_message(self, message):
