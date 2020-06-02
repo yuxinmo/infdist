@@ -273,7 +273,7 @@ class GoodputVsRateExperiment(BaseExperiment):
                     'yaxis': {
                         'title': 'latency [s]',
                     },
-                    'legend': legend,
+                    'showlegend': False,
                 }
             ),
             'background_and_diff': go.Figure([

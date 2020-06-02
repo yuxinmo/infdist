@@ -1,5 +1,6 @@
 from statistics import variance, mean, StatisticsError
 import plotly.graph_objs as go
+import plotly.express as px
 
 from . import DropRateVsUtilityExperiment, BaseExperiment
 from .trial import FixedRatioTrial, GreedyTrial, TreeTrial  # NOQA
@@ -14,6 +15,32 @@ GRAPH_NAME_MAP = {
     'infdist25': r'$\alpha = 0.25$',
     'infdist30': r'$\alpha = 0.3$',
     'FixedRatioTrial': 'simulated network',
+}
+LATENCY_LABEL_POSITION_MAP = {
+    'infdist10': 'bottom left',
+    'infdist15': 'bottom center',
+    'infdist20': 'bottom right',
+    'infdist25': 'middle right',
+    'infdist30': 'middle right',
+    'FixedRatioTrial': 'bottom right',
+}
+DROP_LABEL_POSITION_MAP = {
+    'infdist10': 'bottom right',
+    'infdist15': 'bottom right',
+    'infdist20': 'bottom right',
+    'infdist25': 'middle right',
+    'infdist30': 'bottom right',
+    'FixedRatioTrial': 'bottom right',
+}
+
+colormap = px.colors.qualitative.Plotly
+COLOR_MAP = {
+    'infdist10': colormap[1],
+    'infdist15': colormap[2],
+    'infdist20': colormap[3],
+    'infdist25': colormap[5],
+    'infdist30': colormap[7],
+    'FixedRatioTrial': colormap[6],
 }
 
 
@@ -152,19 +179,25 @@ class LimitedThroughputExperiment(DropRateVsUtilityExperiment):
             except StatisticsError:
                 return 0
 
+        MSG_SIZE = 2048
         return self._get_single_result_graph2(
             self.result[trial_name],
             f'{trial_name} - latency',
-            lambda stat: stat['sent_num']/stat['total_messages']*100,
+            # lambda stat: stat['sent_num']/stat['total_messages']*100,
+            lambda stat: stat['sent_num']*MSG_SIZE*8/10**6/100,
             avg_latency_in_the_second_half,
             scatter_kwargs={
                 'showlegend': False,
+                'line': {
+                    'color': colormap[4],
+                },
             } if trial_name == 'FixedRatioTrial' else {
                 'text': GRAPH_NAME_MAP[trial_name],
-                'textposition': 'bottom right',
+                'textposition': LATENCY_LABEL_POSITION_MAP[trial_name],
+                'marker_color': COLOR_MAP[trial_name],
                 'showlegend': False,
                 'marker_symbol': 'x',
-                'marker_size': 8,
+                'marker_size': 15,
             },
             ys_multiplier=1,
             error_y_func=stat_latency_variance,
@@ -183,19 +216,21 @@ class LimitedThroughputExperiment(DropRateVsUtilityExperiment):
         )
 
     def get_drop_rate_graph(self, trial_name):
+        MSG_SIZE = 2048
         return self._get_single_result_graph2(
             self.result[trial_name],
             GRAPH_NAME_MAP.get(trial_name, f'{trial_name} - drop_rate'),
-            lambda stat: stat['sent_num']/stat['total_messages']*100,
-            # lambda stat: (
-            #     (1-stat.get(
-            #         'set_drop_rate',
-            #         (1-stat['sent_num']/stat['total_messages'])
-            #     ))*100
+            lambda stat: stat['sent_num']*MSG_SIZE*8/10**6/100,
+            lambda stat: stat['received_num']*MSG_SIZE*8/(
+                stat['agents_num']-1
+            )/10**6/100,
+            # lambda stat: stat['received_num']*MSG_SIZE*8/(
+            #     stat['agents_num']-1
+            # )/10**6/100,
+            # lambda stat: stat['sent_num']/stat['total_messages']*100,
+            # lambda stat: stat['received_num']/(
+            #     stat['total_messages']*(stat['agents_num']-1)
             # ),
-            lambda stat: stat['received_num']/(
-                stat['total_messages']*(stat['agents_num']-1)
-            ),
             scatter_kwargs={
                 'fill': 'tozeroy',
                 'line': {
@@ -204,23 +239,25 @@ class LimitedThroughputExperiment(DropRateVsUtilityExperiment):
                 },
             } if trial_name == 'FixedRatioTrial' else {
                 'text': GRAPH_NAME_MAP[trial_name],
-                'textposition': 'bottom right',
+                'textposition': DROP_LABEL_POSITION_MAP[trial_name],
+                'marker_color': COLOR_MAP[trial_name],
                 'textfont': {
                     # 'family': "serif",
                     # 'size': 18,
                     'color': "White",
                 },
                 'marker_symbol': 'x',
-                'marker_size': 8,
+                'marker_size': 15,
                 'showlegend': False
-            }
+            },
+            ys_multiplier=1,
         )
 
     def get_linear_graph(self):
         return go.Scatter(
             name="unconstrained communication",
-            x=[0, 100],
-            y=[0, 100],
+            x=[0, 1],
+            y=[0, 1],
             mode='lines',
             line={
                 'color': 'gray',
@@ -234,10 +271,12 @@ class LimitedThroughputExperiment(DropRateVsUtilityExperiment):
         fig = go.Figure(
             layout={
                 'xaxis': {
-                    'title': 'sent percent',
+                    'title': 'publishing rate [Mbps]',
+                    'range': [0, 0.7],
                 },
                 'yaxis': {
-                    'title': 'received percent',
+                    'title': 'reception rate [Mbps]',
+                    'range': [0, 0.7],
                 },
                 'yaxis2': {
                     'title': 'latency [s]',
@@ -269,7 +308,8 @@ class LimitedThroughputExperiment(DropRateVsUtilityExperiment):
         fig = go.Figure(
             layout={
                 'xaxis': {
-                    'title': 'sent percent',
+                    'title': 'publishing rate [Mbps]',
+                    'range': [0, 0.7],
                 },
                 'yaxis': {
                     'title': 'latency [s]',

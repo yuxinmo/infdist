@@ -77,7 +77,7 @@ def run_experiment(experiment_cls):
 
 EXPERIMENTS_TO_RUN = [
     # GraphMessagesExperiment,
-    VaryingBackgroundTrafficExperiment,
+    # VaryingBackgroundTrafficExperiment,
     LimitedThroughputExperiment,
     # GoodputVsRateExperiment,
 ]
