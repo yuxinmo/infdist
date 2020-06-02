@@ -140,6 +140,7 @@ class BaseTreeAgent(ConstrainedAgent):
         est_sent_message.t_sent = self.now_func()
         if self.tree.decide(est_sent_message, self.simulations_num):
             return self.ACT_SEND
+        print("DROPPING")
         return self.ACT_DROP
 
     def register_sent(self, message):

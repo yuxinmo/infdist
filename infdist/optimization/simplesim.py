@@ -200,6 +200,7 @@ def create_rate_constraint_violations(
     scale=12,
     coef_init=None,
     intercept_init=None,
+    pessymistic_latency=0.5,
 ):
     if coef_init is None:
         coef_init = [[0]]
@@ -213,6 +214,7 @@ def create_rate_constraint_violations(
     rate_model = SGDRegressor(
         # loss='hinge',
         loss='squared_epsilon_insensitive',
+        # loss='epsilon_insensitive',
         alpha=0,
         # shuffle=True,
         verbose=0,
@@ -221,6 +223,13 @@ def create_rate_constraint_violations(
         eta0=eta0,
         power_t=0.3,
         # fit_intercept=False,
+
+        penalty='l2',
+        max_iter=1000,
+        tol=1e-3,
+        shuffle=True,
+        warm_start=False,
+        average=False,
     )
     train_data = []
     params_history = []
@@ -236,8 +245,12 @@ def create_rate_constraint_violations(
     #     f'initial coef: {rate_model.coef_}, {rate_model.intercept_}'
     # )
 
+    params_history.append(
+        (0, rate_model.coef_[0], rate_model.intercept_[0])
+    )
+
     def update_model(all_messages, t):
-        window = messageset_to_window(all_messages, t-0.5)
+        window = messageset_to_window(all_messages, t-pessymistic_latency)
         without_sent = [
                 m
                 for m in window
@@ -281,7 +294,10 @@ def create_rate_constraint_violations(
 
     def modeled_window_value(window):
         throughput = average_throughput(window)
-        result = rate_model.predict([[throughput*scale]])[0]
+        a = rate_model.coef_[0]
+        b = rate_model.intercept_[0]
+        result = a*throughput*scale + b
+        # result2 = rate_model.predict([[throughput*scale]])[0]
         return result/scale
 
     def _rate_constraint_violated(window):
