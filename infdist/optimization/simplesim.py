@@ -197,6 +197,7 @@ def create_rate_constraint_violations(
     alpha=0.25,
     delta=0.01756,
     eta0=0.00005,
+    scale=12,
     coef_init=None,
     intercept_init=None,
 ):
@@ -206,7 +207,6 @@ def create_rate_constraint_violations(
     if intercept_init is None:
         intercept_init = [0]
 
-    scale = 12
     # eta0 = 0.0002
     # eta0 = 0.0002
 
@@ -227,7 +227,7 @@ def create_rate_constraint_violations(
 
     rate_model.eta0 = 1
     rate_model.fit(
-        coef_init, intercept_init,
+        [[0], [1]], [0, coef_init[0][0]+intercept_init[0]],
         coef_init=coef_init,
         intercept_init=intercept_init,
     )
@@ -341,5 +341,6 @@ def create_rate_constraint_violations(
     rate_constraint_violations.update_model = update_model
     rate_constraint_violations.train_data = train_data
     rate_constraint_violations.model_params_history = params_history
+    rate_constraint_violations.rate_model = rate_model
 
     return rate_constraint_violations
