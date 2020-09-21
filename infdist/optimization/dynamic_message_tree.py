@@ -20,7 +20,7 @@ class DynamicMessageTree:
         self.messages_context = messages_context
         self.max_utility = None
         self.t_end = t_end
-        self.debug = True
+        self.debug = False
         self.constraints = constraints
         self.limit_history = 100
 

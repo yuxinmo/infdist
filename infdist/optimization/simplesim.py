@@ -146,6 +146,7 @@ def create_msgnum_constraint_violations(msgnum=9, timeslot=2.7):
         ])
 
     msgnum_constraint_violations.compute_value = compute_value
+    msgnum_constraint_violations.update_model = lambda a, b: None
 
     return msgnum_constraint_violations
 

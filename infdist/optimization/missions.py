@@ -23,7 +23,8 @@ presets = [
         'max_depl_rate_mi': lambda: np.random.normal(0.3, 0.01),
         'max_depl_rate': lambda mi: max(0.003, np.random.normal(mi, 0.001)),
         't_gen': lambda t: abs(np.random.normal(t, 0.001)),
-        'topic_weight': lambda i: i*1000+1
+        'topic_weight': lambda i: i*1000+1,
+        'message_size': lambda i: 2048,
     },
     {
         'ident': 2,
@@ -31,6 +32,7 @@ presets = [
         'max_depl_rate': lambda mi: mi,
         't_gen': lambda t: t,
         'topic_weight': lambda i: i**(0.1)+1,
+        'message_size': lambda i: 2048,
     },
     {
         'ident': 3,

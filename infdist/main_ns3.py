@@ -17,8 +17,8 @@ from simulator.experiment import (  # NOQA
 from optimization.missions import presets as msgset_presets
 
 # EXPERIMENTS_TYPE = 'goodput_vs_rate'
-EXPERIMENTS_TYPE = 'varying background traffic'
-# EXPERIMENTS_TYPE = 'very_small'
+# EXPERIMENTS_TYPE = 'varying background traffic'
+EXPERIMENTS_TYPE = 'small'
 
 if EXPERIMENTS_TYPE == 'very_small':
     AGENTS_NUM = 6
@@ -70,15 +70,16 @@ def run_experiment(experiment_cls):
         experiment.save_graphs(
             f'/tmp/graphs/{AGENTS_NUM}_{T_END}_{msgset["ident"]}' + '_{}.pdf'
         )
-        experiment.save_publication_graphs(
-            PUBLICATION_DATA_DIR
-        )
+        # experiment.save_publication_graphs(
+        #     PUBLICATION_DATA_DIR
+        # )
 
 
 EXPERIMENTS_TO_RUN = [
+    DropRateVsUtilityExperiment,
     # GraphMessagesExperiment,
     # VaryingBackgroundTrafficExperiment,
-    LimitedThroughputExperiment,
+    # LimitedThroughputExperiment,
     # GoodputVsRateExperiment,
 ]
 

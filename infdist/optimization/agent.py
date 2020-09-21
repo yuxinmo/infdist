@@ -17,6 +17,7 @@ class BaseAgent:
         self.ident = ident
         self.received_messages = MessageSet(0)
         self.sent_messages = MessageSet(0)
+        self.generated_messages = MessageSet(0)
         self.net = net
         self.messages_context = messages_context
         self.now_func = now_func
@@ -34,6 +35,7 @@ class BaseAgent:
 
     def generated(self, native_message):
         message = self.net.deserialize(native_message)
+        self.register_generated(message)
         result = self.process_message(message)
         if result == self.ACT_SEND:
             self.send(native_message, message)
@@ -46,6 +48,9 @@ class BaseAgent:
     def received(self, native_message):
         message = self.net.deserialize(native_message)
         self.register_received(message)
+
+    def register_generated(self, message):
+        self.generated_messages.append(message)
 
     def register_sent(self, message):
         self.sent_messages.append(message)
@@ -63,11 +68,17 @@ class BaseAgent:
 
 
 class FullCommAgent(BaseAgent):
+    """
+    This agent sends all messages.
+    """
     def process_message(self, m):
         return self.ACT_SEND
 
 
 class FixedRatioAgent(BaseAgent):
+    """
+    Agent that randomly drops messages with a predefined probability.
+    """
     def __init__(self, *args, **kwargs):
         self.drop_ratio = kwargs.pop('drop_ratio', 0.5)
         super().__init__(*args, **kwargs)
@@ -79,6 +90,9 @@ class FixedRatioAgent(BaseAgent):
 
 
 class ConstrainedAgent(BaseAgent):
+    """
+    A base class for all agents implementing constraints.
+    """
     def __init__(self, *args, **kwargs):
         self.constraints = kwargs.pop('constraints')
         super().__init__(*args, **kwargs)
@@ -92,6 +106,12 @@ class ConstrainedAgent(BaseAgent):
 
 
 class GreedyConstrainedAgent(ConstrainedAgent):
+    """
+    A greedy agent that tries to maintain constraint.
+
+    Keep in mind that no predictions are being made about what other agents
+    are sending, so it is very likely that the constraint is not maintained.
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -114,6 +134,9 @@ class GreedyConstrainedAgent(ConstrainedAgent):
 
 
 class BaseTreeAgent(ConstrainedAgent):
+    """
+    Base class for agents implementing a decision tree.
+    """
     DEFAULT_T_END = 10
 
     def __init__(self, *args, **kwargs):
@@ -140,7 +163,7 @@ class BaseTreeAgent(ConstrainedAgent):
         est_sent_message.t_sent = self.now_func()
         if self.tree.decide(est_sent_message, self.simulations_num):
             return self.ACT_SEND
-        print("DROPPING")
+        # print("DROPPING")
         return self.ACT_DROP
 
     def register_sent(self, message):
@@ -160,6 +183,10 @@ class BaseTreeAgent(ConstrainedAgent):
 
 
 class FullKnowledgeAgent(BaseTreeAgent):
+    """
+    A decision tree-based agent knowing all messages that are going to be
+    exchanged in the system.
+    """
     def __init__(self, *args, **kwargs):
         all_messages = kwargs.pop('all_messages')
         super().__init__(*args, **kwargs)
@@ -172,6 +199,13 @@ class FullKnowledgeAgent(BaseTreeAgent):
 
 
 class EstimatingAgent(BaseTreeAgent):
+    """
+    A decision tree-based agent that estimates the messages to be exchanged
+    by other agents.
+
+    The estimation is made by MessageForecast class based on the mission
+    context.
+    """
     def __init__(self, *args, **kwargs):
         self.window_size = kwargs.pop('window_size')
         self.future_messages_num = kwargs.pop('future_messages_num', 30)

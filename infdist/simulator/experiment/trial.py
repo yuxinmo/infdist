@@ -83,6 +83,12 @@ class Trial:
             'agents_num': len(self.agents),
         }
 
+    def all_generated_messages(self):
+        result = MessageSet(0, [])
+        for agent in self.agents:
+            result += agent.generated_messages
+        return result
+
     def all_received_messages(self):
         result = MessageSet(0, [])
         for agent in self.agents:

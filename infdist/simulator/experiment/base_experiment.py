@@ -109,7 +109,15 @@ class BaseExperiment:
 
     def save_publication_graphs(self, publication_dir):
         graphs = self.get_publication_graphs()
-        for graph_name, fig in graphs.items():
+        for graph_name, graph in graphs.items():
+            if type(graph) is list:
+                fig = go.Figure({'data': graph, 'title': "test"})
+                self._set_figure_layout(graph_name, fig)
+            elif type(graph) is go.Figure:
+                fig = graph
+            else:
+                raise Exception("Unknown graph type")
+
             fig.update_layout(
                 width=400,
                 height=300,

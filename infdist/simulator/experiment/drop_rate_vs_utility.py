@@ -22,8 +22,8 @@ _PLOTLY_COLORS = [
 ]
 
 
-def avg(l):
-    return sum(l)/(len(l) or 1)
+def avg(lst):
+    return sum(lst)/(len(lst) or 1)
 
 
 class DropRateVsUtilityExperiment(BaseExperiment):
@@ -33,14 +33,14 @@ class DropRateVsUtilityExperiment(BaseExperiment):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        drop_rates_num = 50
+        drop_rates_num = 5
         self.drop_rates = [
             i/drop_rates_num
             for i in range(drop_rates_num+1)
         ]
         self.repeats = [1, 1]
         self.trial_cls = None
-        self.trial_clss = [FixedRatioTrial, TreeTrial]
+        self.trial_clss = [FixedRatioTrial]  # , TreeTrial]
 
     def prepare_trial(self, trial_cls, drop_rate=0):
         t = super().prepare_trial(trial_cls)
@@ -146,6 +146,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         g = {}
         for i, trial_name in enumerate(trial_names):
             g[trial_name] = {}
+
             if mode == 'set':
                 g[trial_name]['set'] = self._get_single_result_graph(
                     self.result[trial_name],
@@ -160,8 +161,8 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                     trial_name + ' achieved',
                     lambda stat: 1-(
                         stat['sent_received_num']/stat['total_messages']),
-                    lambda stat: stat['total_utility'] / (
-                        stat['max_utility'] if self.NORMALIZE_UTILITY
+                    lambda stat: stat['total_utility'] * (
+                        100/stat['max_utility'] if self.NORMALIZE_UTILITY
                         else 1
                     ),
                     style=i,
@@ -387,7 +388,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             },
             x=data,
             histnorm='percent',
-            name=f"histogram",
+            name="histogram",
             marker_color='lightgreen',
         )]
 
