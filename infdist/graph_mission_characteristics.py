@@ -1,7 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
+"""
+This script was created in order to graph characteristics from
+mission conducted on Balboas.
+"""
+
+
 import os
 import pickle
+
 
 from simulator.experiment import (
     DropRateVsUtilityExperiment,
