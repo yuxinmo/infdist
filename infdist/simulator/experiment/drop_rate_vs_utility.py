@@ -5,7 +5,7 @@ import plotly.express as px
 from statsmodels.distributions.empirical_distribution import ECDF
 
 from .base_experiment import BaseExperiment
-from .trial import FixedRatioTrial, TreeTrial
+from .trial import FixedRatioTrial, TreeTrial, Trial
 
 
 _PLOTLY_COLORS = [
@@ -40,7 +40,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         ]
         self.repeats = [1, 1]
         self.trial_cls = None
-        self.trial_clss = [FixedRatioTrial]  # , TreeTrial]
+        self.trial_clss = [FixedRatioTrial, TreeTrial]
 
     def prepare_trial(self, trial_cls, drop_rate=0):
         t = super().prepare_trial(trial_cls)
@@ -308,12 +308,10 @@ class DropRateVsUtilityExperiment(BaseExperiment):
     def _prepare_histogram_data(
         self, stat,
     ):
-        from optimization import missions
-
-        messages, ctx = missions.generate_simple_3D_reconstruction(
+        messages, ctx = Trial.generate_messages_from_msgset(
+            self.msgset,
             self.t_end,
-            msgset=self.msgset,
-            senders=set(range(self.agents_num)),
+            self.agents_num,
         )
 
         # ctx = trial.ctx

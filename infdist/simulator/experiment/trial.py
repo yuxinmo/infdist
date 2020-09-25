@@ -61,7 +61,6 @@ class Trial:
 
         all_messages = deepcopy(self.messages)
         simplesim.apply_latency(all_messages, 0)
-
         return {
             'all_messages': all_messages,
             't_end': self.t_end,
@@ -135,14 +134,27 @@ class Trial:
         for a in self.agents:
             a.finish_mission(real_t_end)
 
+    @staticmethod
+    def generate_messages_from_msgset(msgset, t_end, nodes_num):
+        msgset_type = msgset.get('type', '3D_reconstruction')
+        if msgset_type == '3D_reconstruction':
+            messages, ctx = \
+                missions.generate_simple_3D_reconstruction(
+                    t_end,
+                    msgset=msgset,
+                    senders=set(range(nodes_num)),
+                )
+        elif msgset_type == 'serialized':
+            messages = msgset['messages']
+            ctx = msgset['ctx']
+        return messages, ctx
+
     def prepare_messages(self):
         if self.messages is not None:
             assert self.ctx is not None
             return  # already prepared
-        self.messages, self.ctx = missions.generate_simple_3D_reconstruction(
-            self.t_end,
-            msgset=self.msgset,
-            senders=set(range(self.nodes_num)),
+        self.messages, self.ctx = self.generate_messages_from_msgset(
+            self.msgset, self.t_end, self.nodes_num,
         )
 
     def prepare_agents(self):
