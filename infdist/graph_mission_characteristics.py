@@ -31,7 +31,7 @@ T_END = 95
 
 def get_ctx():
     return generate_mission_context(
-        agents=HOSTS,
+        agents=list(range(8)),
         data_types=['v'],
         t_end=T_END,
         T=0.5,
@@ -45,16 +45,17 @@ def adjust_messages_for_simulation(messages):
 
     Additionally, in the simulations size bigger than MTU is not supported.
     """
+    senders = set()
     for message in messages.all():
         message.sender = HOSTS_TO_INT_MAPPING[message.sender]
         message.receivers = {
-            10
-            # int_ident
-            # for hostname, int_ident in message.receivers.items()
-            # if int_ident != message.sender
+            int_ident
+            for hostname, int_ident in message.receivers.items()
+            if int_ident != message.sender
         }
         message.size = 2048
         message.data_type_name = f'v{message.sender}'
+        senders.add(message.sender)
 
 
 def main():

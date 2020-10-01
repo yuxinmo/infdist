@@ -241,28 +241,36 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         return fig
 
     def make_final_figure(
-        self, cumulative, histogram, cdf
+        self, cumulative, histogram, cdf,
+        skip_cumulative=True
     ):
-        fig = make_subplots(rows=2, cols=1)
-        for cumulative_fig in cumulative:
-            for d in cumulative_fig.data:
-                fig.append_trace(
-                    d,
-                    row=1, col=1
-                )
+        rows = 1 if skip_cumulative else 2
+        fig = make_subplots(
+            rows=rows,
+            cols=1
+        )
         x_title_standoff = 5
         y_title_standoff = 5
-        fig.update_xaxes(
-            title_text="drop rate",
-            title_standoff=x_title_standoff,
-            range=[0, 1],
-            row=1, col=1,
-        )
-        fig.update_yaxes(
-            title_text="% of utility" if self.NORMALIZE_UTILITY else 'utility',
-            title_standoff=y_title_standoff,
-            row=1, col=1,
-        )
+        if not skip_cumulative:
+            for cumulative_fig in cumulative:
+                for d in cumulative_fig.data:
+                    fig.append_trace(
+                        d,
+                        row=1, col=1
+                    )
+            fig.update_xaxes(
+                title_text="drop rate",
+                title_standoff=x_title_standoff,
+                range=[0, 1],
+                row=1, col=1,
+            )
+            fig.update_yaxes(
+                title_text=(
+                    "% of utility" if self.NORMALIZE_UTILITY else 'utility'
+                ),
+                title_standoff=y_title_standoff,
+                row=1, col=1,
+            )
         if self.NORMALIZE_UTILITY:
             fig.update_yaxes(
                 range=[0, 100],
@@ -270,11 +278,11 @@ class DropRateVsUtilityExperiment(BaseExperiment):
 
         fig.append_trace(
             histogram,
-            row=2, col=1
+            row=rows, col=1
         )
         fig.append_trace(
             cdf,
-            row=2, col=1
+            row=rows, col=1
         )
         fig.update_xaxes(
             title_text="message utility",
@@ -282,13 +290,13 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             range=[0, 1],
             ticktext=["low", "medium", "high"],
             tickvals=[0, 0.5, 1],
-            row=2, col=1,
+            row=rows, col=1,
         )
         fig.update_yaxes(
             title_text="% of messages",
             title_standoff=y_title_standoff,
             range=[0, 100],
-            row=2, col=1,
+            row=rows, col=1,
         )
 
         fig.update_layout({
@@ -300,7 +308,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
                     pad=0
                 ),
             "width": 300,
-            "height": 370,
+            "height": 370 / (2 if skip_cumulative else 1),
             "showlegend": False,
         })
         return fig
