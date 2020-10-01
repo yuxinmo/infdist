@@ -1,2 +1,7 @@
 -e git://github.com/zeroos/monte-carlo-tree-search.git#egg=imparaai-montecarlo
 graphviz
+sklearn
+pandas
+plotly
+numpy
+statsmodels
