@@ -2,8 +2,18 @@ import plotly.graph_objs as go
 import plotly
 import plotly.io as pio
 import numpy as np
+import os
+from pathlib import Path
 
-plotly.io.orca.config.executable = '/home/zeroos/node_modules/.bin/orca'
+
+LOCAL_ORCA_PATH = os.path.join(
+    str(Path.home()), 'node_modules', '.bin', 'orca'
+)
+
+if os.path.exists("/orca.sh"):
+    plotly.io.orca.config.executable = '/orca.sh'
+elif os.path.exists(LOCAL_ORCA_PATH):
+    plotly.io.orca.config.executable = LOCAL_ORCA_PATH
 
 
 _PLOTLY_COLORS = [

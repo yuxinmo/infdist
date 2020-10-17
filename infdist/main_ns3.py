@@ -18,7 +18,7 @@ from optimization.missions import presets as msgset_presets
 
 # EXPERIMENTS_TYPE = 'goodput_vs_rate'
 # EXPERIMENTS_TYPE = 'varying background traffic'
-EXPERIMENTS_TYPE = 'small'
+EXPERIMENTS_TYPE = 'very_small'
 
 if EXPERIMENTS_TYPE == 'very_small':
     AGENTS_NUM = 6
