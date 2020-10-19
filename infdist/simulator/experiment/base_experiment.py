@@ -104,7 +104,7 @@ class BaseExperiment:
                 raise Exception("Unknown graph type")
             if f is not None:
                 file_name = f.format(graph_name)
-                os.path.makedirs(os.path.dirname(), exist_ok=True)
+                os.makedirs(os.path.dirname(), exist_ok=True)
                 pio.write_image(fig, file_name)
             else:
                 pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))
