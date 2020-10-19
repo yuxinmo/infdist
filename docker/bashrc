@@ -1,4 +1,4 @@
-alias run_infdist_experiments="cd /ns3_workspace/ns-allinone-3.30/ns-3.30 && python3 ./waf --pyrun /infdist/infdist/main_ns3.py"
+alias run_infdistopt="cd /ns3_workspace/ns-allinone-3.30/ns-3.30 && python3 ./waf --pyrun /infdist/infdist/main_ns3.py"
 
 echo " ### Information Distribution In Multi-Robot Systems ### "
 echo " This docker image was created to facilitate running the experiments "
@@ -6,12 +6,5 @@ echo " The customized NS-3 instance is compiled in /ns3_workspace"
 echo " The code for our model is available in /infdist"
 echo ""
 echo "In order to run the experiment just type the following command in bash:"
-echo "    compile_crazyswarm  -- compiles ROS workspace"
-echo "    chooser  -- runs chooser.py"
-echo "    start_dho -- starts the presentation"
-echo "    start_core -- starts the crazyswarm server without starting any presentation"
-echo "    start_sim -- starts the crazyswarm server in simulation mode"
+echo "    run_infdistopt  --- runs experiments to show that the optimization is working well"
 echo ""
-export LOCAL_IP="$(hostname -I | awk '{print $2}')"
-echo $LOCAL_IP
-

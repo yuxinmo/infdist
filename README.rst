@@ -2,11 +2,11 @@ This repository contains the main part of the information distribution
 optimization middleware.
 
 
-Using the ROS node
-==================
+ROS node
+========
 
 The whole repository has a structure of ROS2 node. The node can be used to 
-optimize information distribution in ROS. An example usage of this node is
+optimize information distribution in ROS2. An example usage of this node is
 available at: https://gitlab.aau.at/aau-nav/development/camera_streaming .
 
 Simulations
@@ -19,6 +19,20 @@ simulations.
 Using the docker container
 --------------------------
 
+Using the provided Docker container is the easiest way to re-produce our
+results. First, install Docker and make sure that Docker deamon is running.
+Then:
+
+ $ cd docker
+ $ ./build.sh  
+ (...)  # takes around 40 minutes on my laptop
+ $ ./start.sh
+ # This will start the docker container and switch us to the shell opened
+ # inside this container
+ # Read the instructions to find out the supported commands.
+ $ run_infdist_experiments
+ (...) # This might take a couple of hours.
+ # After the command is finished the resulting plots should appear in /tmp
 
 
 Manual installation
@@ -28,7 +42,9 @@ Manual installation
  2. Install all requirements from requirements.txt
  3. Run main_ns3.py from NS3
 
-In order to generate plots you also need plotly and plotly-orca. 
+In order to generate plots you also need plotly and plotly-orca. The Dockerfile
+[https://github.com/zeroos/infdist/blob/master/docker/Dockerfile] can serve as
+a working example of what needs to be done.
 
 
 Code structure
