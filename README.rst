@@ -23,16 +23,18 @@ Using the provided Docker container is the easiest way to re-produce our
 results. First, install Docker and make sure that Docker deamon is running.
 Then:
 
- $ cd docker
- $ ./build.sh  
- (...)  # takes around 40 minutes on my laptop
- $ ./start.sh
- # This will start the docker container and switch us to the shell opened
- # inside this container
- # Read the instructions to find out the supported commands.
- $ run_infdist_experiments
- (...) # This might take a couple of hours.
- # After the command is finished the resulting plots should appear in /tmp
+.. code-block:: bash
+
+  $ cd docker
+  $ ./build.sh  
+  (...)  # takes around 40 minutes on my laptop
+  $ ./start.sh
+  # This will start the docker container and switch us to the shell opened
+  # inside this container
+  # Read the instructions to find out the supported commands.
+  $ run_infdist_experiments
+  (...) # This might take a couple of hours.
+  # After the command is finished the resulting plots should appear in /tmp
 
 
 Manual installation
