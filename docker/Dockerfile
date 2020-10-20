@@ -5,6 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -qy \
     cython3 \
+    evince \
     iputils-ping \
     net-tools \
     iproute2 \
