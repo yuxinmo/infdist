@@ -32,7 +32,7 @@ Then:
   # This will start the docker container and switch us to the shell opened
   # inside this container
   # Read the instructions to find out the supported commands.
-  $ run_infdist_experiments
+  $ run_infdistopt
   (...) # This might take a couple of hours.
   # After the command is finished the resulting plots should appear in /tmp
 
