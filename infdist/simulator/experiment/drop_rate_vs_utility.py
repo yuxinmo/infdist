@@ -40,7 +40,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
         ]
         self.repeats = [1, 1]
         self.trial_cls = None
-        self.trial_clss = [FixedRatioTrial]  # , TreeTrial]
+        self.trial_clss = [FixedRatioTrial, TreeTrial]
 
     def prepare_trial(self, trial_cls, drop_rate=0):
         t = super().prepare_trial(trial_cls)
