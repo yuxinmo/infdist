@@ -1,8 +1,8 @@
+from datetime import datetime
 import os
 import pickle
 import plotly.graph_objs as go
 import plotly.io as pio
-from datetime import datetime
 
 from .trial import TreeTrial
 

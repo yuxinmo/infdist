@@ -32,9 +32,70 @@ Then:
   # This will start the docker container and switch us to the shell opened
   # inside this container
   # Read the instructions to find out the supported commands.
-  $ run_infdistopt
+  $ infdist DropRateVsUtility
   (...) # This might take a couple of hours.
   # After the command is finished the resulting plots should appear in /tmp
+
+
+In the example above the experiment "DropRateVsUtility" is started. In order to
+see a list of all available experiments use `infdist` command without any
+arguments. For your convenience the list of available experiments is also
+provided below. Keep in mind, however, that this readme is updated less often
+than the code, so it might still be a good idea to check the output of `infdist`
+command.
+
+
+Available experiments:
+----------------------
+
+DropRateVsUtility
+"""""""""""""""""
+Published in: 
+    Information Distribution in Multi-Robot Systems: 
+    Generic, Utility-Aware Optimization Middleware
+
+Description: 
+    The experiment designed to show the relationship between the amount of
+    messages that can be transmitted and utility. It also plots mission
+    characteristics as a way to quantify problem difficulty.
+
+GoodputVsRate
+"""""""""""""
+Published in: 
+    Information Distribution in Multi-Robot Systems:
+    Adapting to Varying Communication Conditions
+
+Description: 
+    The experiment plots relationships between publishing rate,
+    amount of data inflight and various measurable factors like the value used
+    in variable goodput constraint (called 'TCP Vegas' on graphs), latency
+    and reception rate. It is helpful to understand how the network behaves.
+
+GraphMessages
+"""""""""""""
+Published in: 
+    Information Distribution in Multi-Robot Systems:
+    Utility-Based Evaluation Model
+
+Description: 
+    This simple experiment only graphs the messages and their utilities on
+    a time scale.
+
+LimitedThroughput
+"""""""""""""""""
+Published in: 
+    Information Distribution in Multi-Robot Systems:
+    Adapting to Varying Communication Conditions
+
+Description: 
+    The experiment is designed to show how the adaptive goodput constraint
+    performs under limited throughput conditions.
+
+VaryingBackgroundTraffic
+""""""""""""""""""""""""
+Description: 
+    The experiment shows how the adaptive goodput constraint performs under
+    varying background traffic.
 
 
 Manual installation
