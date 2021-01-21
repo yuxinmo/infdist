@@ -1,4 +1,7 @@
-alias infdist="cd /ns3_workspace/ns-allinone-3.30/ns-3.30 && python3 ./waf --pyrun /infdist/infdist/main_ns3.py"
+infdist() {
+    cd /ns3_workspace/ns-allinone-3.30/ns-3.30
+    python3 ./waf --pyrun "/infdist/infdist/main_ns3.py $@"
+}
 
 echo " ### Information Distribution In Multi-Robot Systems ### "
 echo " This docker image was created to facilitate running the experiments "
