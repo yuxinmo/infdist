@@ -50,7 +50,7 @@ presets = [
         'topic_weight': lambda i: 5,
         'message_size': lambda i: 2048,
         't_start': lambda sender: sender/(8*6) + 1/(8*6)*0.2,
-        'f': 6,
+        'f': lambda sender: 6,
     },
     {
         'ident': 5,
@@ -60,7 +60,7 @@ presets = [
         'topic_weight': lambda i: 5,
         'message_size': lambda i: 2048,
         't_start': lambda sender: sender/(8*6) + 1/(8*6)*0.2,
-        'f': 1,
+        'f': lambda sender: 1,
     },
     {
         'ident': 6,
@@ -68,9 +68,35 @@ presets = [
         'max_depl_rate': lambda mi: mi,
         't_gen': lambda t: abs(np.random.normal(t, 0.01)),
         'topic_weight': lambda i: 5,
+        'message_size': lambda i: 1900, # 2048,
+        't_start': lambda sender: (sender%4)/(4*10) + (
+            sender // 4 * 25 + sender % 4 * 0
+        ),
+        't_end': lambda t_end, sender: (
+            sender // 4 * 25 + 25 - sender % 4 * 5
+            #  sender*20 + 45
+        ),
+        'f': lambda sender: 10,
+        'seed': 0,
+    },
+    {
+        'ident': 7,
+        'max_depl_rate_mi': lambda: 0.3,
+        'max_depl_rate': lambda mi: mi,
+        't_gen': lambda t: abs(np.random.normal(t, 0.01)),
+        'topic_weight': lambda i: 5,
         'message_size': lambda i: 2048,
-        't_start': lambda sender: sender/(8*2) + 1/(8*2)*0.2,
-        'f': 2,
+        't_start': lambda sender: (
+            (sender % 4)/(4*10)
+            # (sender % 2 * 4 + sender // 2)/(8*10)
+        ) + (
+            sender // 4 * 100 + sender % 4 * 5
+        ),
+        't_end': lambda t_end, sender: (
+            sender // 4 * 100 + 100 - sender % 4 * 5
+            #  sender*20 + 45
+        ),
+        'f': lambda sender: 10
     },
 ]
 
@@ -203,11 +229,15 @@ def generate_simple_3D_reconstruction(
         level_end = level_start
         # level_end = level_start * np.random.random()
         messages, context = generate_batt_messages(
-            t_end, sender, receivers,
+            msgset.get(
+                't_end',
+                lambda t_end, sender: t_end
+            )(t_end, sender),
+            sender, receivers,
             f=msgset.get(
                 'f',
-                np.random.normal(3, 0.1),
-            ),
+                lambda _: np.random.normal(3, 0.1),
+            )(sender),
             t_start=msgset.get(
                 't_start',
                 lambda _: int(np.random.random())

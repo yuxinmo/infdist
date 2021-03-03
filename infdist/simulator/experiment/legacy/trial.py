@@ -127,7 +127,9 @@ class Trial:
 
         for name, constraint_violations in stats['constraints'].items():
             if constraint_violations > 0:
-                print("!!! {} constraint NOT met !!!".format(name))
+                print("!!! {} constraint NOT met ({} times)".format(
+                    name, constraint_violations
+                ))
 
     def finish_mission(self):
         real_t_end = simulator.now_float()
@@ -137,12 +139,14 @@ class Trial:
     @staticmethod
     def generate_messages_from_msgset(msgset, t_end, nodes_num):
         msgset_type = msgset.get('type', '3D_reconstruction')
+        seed = msgset.get('seed', 0)
         if msgset_type == '3D_reconstruction':
             messages, ctx = \
                 missions.generate_simple_3D_reconstruction(
                     t_end,
                     msgset=msgset,
                     senders=set(range(nodes_num)),
+                    seed=seed,
                 )
         elif msgset_type == 'serialized':
             messages = msgset['messages']

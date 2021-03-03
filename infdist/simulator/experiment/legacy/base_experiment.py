@@ -62,7 +62,7 @@ class BaseExperiment:
         return {}
 
     def get_publication_graphs(self):
-        return self.get_graphs()
+        return {}
 
     def get_graph_title(self, graph_name):
         return graph_name
@@ -110,6 +110,7 @@ class BaseExperiment:
                 pio.write_image(fig, '/tmp/{}.pdf'.format(graph_name))
 
     def save_publication_graphs(self, publication_dir):
+        os.makedirs(publication_dir, exist_ok=True)
         graphs = self.get_publication_graphs()
         for graph_name, graph in graphs.items():
             if type(graph) is list:
@@ -121,8 +122,8 @@ class BaseExperiment:
                 raise Exception("Unknown graph type")
 
             fig.update_layout(
-                width=400,
-                height=300,
+                width=800,
+                height=200,
                 margin=go.layout.Margin(
                     l=0,  # NOQA
                     r=0,

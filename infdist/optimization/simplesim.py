@@ -195,7 +195,7 @@ def create_throughput_constraint_violations(throughput, timeslot_length):
 
 def create_rate_constraint_violations(
     timeslot_length,
-    alpha=0.25,
+    alpha=0.15,
     delta=0.01756,
     eta0=0.00005,
     scale=12,
@@ -204,10 +204,10 @@ def create_rate_constraint_violations(
     pessymistic_latency=0.5,
 ):
     if coef_init is None:
-        coef_init = [[0]]
+        coef_init = [[0.26]]
 
     if intercept_init is None:
-        intercept_init = [0]
+        intercept_init = [-0.07*scale]
 
     # eta0 = 0.0002
     # eta0 = 0.0002
@@ -219,7 +219,7 @@ def create_rate_constraint_violations(
         alpha=0,
         # shuffle=True,
         verbose=0,
-        epsilon=0.1,
+        epsilon=0.2,
         learning_rate='constant',
         eta0=eta0,
         power_t=0.3,
@@ -237,7 +237,7 @@ def create_rate_constraint_violations(
 
     rate_model.eta0 = 1
     rate_model.fit(
-        [[0], [1]], [0, coef_init[0][0]+intercept_init[0]],
+        [[0], [1]], [intercept_init[0], 1*coef_init[0][0]+intercept_init[0]],
         coef_init=coef_init,
         intercept_init=intercept_init,
     )
@@ -360,4 +360,113 @@ def create_rate_constraint_violations(
     rate_constraint_violations.model_params_history = params_history
     rate_constraint_violations.rate_model = rate_model
 
+    rate_constraint_violations.messageset_to_window = messageset_to_window
+    rate_constraint_violations.pessymistic_latency = pessymistic_latency
+    rate_constraint_violations.average_rate = average_rate
+    rate_constraint_violations.average_throughput = average_throughput
     return rate_constraint_violations
+
+
+def create_aimd_constraint_violations(
+    timeslot_length,
+    initial_value=0,
+    a=2048,
+    b=0.5,
+    alpha=0.15,
+    additive_throughput_diff=0.1,
+):
+    """
+    :param timeslot_length
+    :param initial_value: initial number of bytes in window
+    :param a: additive parameter, by this amount the window size will increase
+    :param b: multiplicative parameter, by this number the window size will
+              be multiplied
+    :param alpha: alpha value for the rate constraint
+    :param additive_throughput_diff: the constraint will not grow if throughput
+    is further from the constraint value than this value
+    """
+
+    rate_constraint = create_rate_constraint_violations(
+        timeslot_length,
+        alpha=alpha,
+    )
+    aimd_constraint_value = initial_value
+    params_history = []
+    train_data = []
+
+    def aimd_constraint_violations(messageset, incremental=False):
+        """
+        Returns the number of times the throughput constraint is violated.
+        """
+        window = deque()
+        result = 0
+
+        if incremental:
+            msgs = messageset.msgs_gen_after(
+                messageset.message.t_gen - timeslot_length
+            )
+        else:
+            msgs = messageset.all()
+
+        for m in msgs:
+            window.append(m)
+            while m.t_sent - window[0].t_sent > timeslot_length:
+                window.popleft()
+            if sum([m.size for m in window]) > (
+                aimd_constraint_value*timeslot_length/8
+            ):
+                result += 1
+        return result
+
+    def compute_value(messageset, t):
+        return sum([
+            m.size*8/timeslot_length/10**6
+            for m in messageset.gen_after(t-timeslot_length)
+            if m.t_gen <= t
+        ])
+
+    def aimd_constraint_value_mbytes():
+        return aimd_constraint_value/10**6
+
+    def update_model(all_messages, t):
+        nonlocal aimd_constraint_value
+        window = rate_constraint.messageset_to_window(
+            all_messages, t-rate_constraint.pessymistic_latency)
+        without_sent = [
+                m
+                for m in window
+                if m.t_rcv is not None
+        ]
+
+        if len(without_sent) == 0:
+            rate = 0
+            throughput = 0
+        else:
+            throughput = rate_constraint.average_throughput(window)
+            rate = rate_constraint.average_rate(without_sent)
+
+        if rate > alpha:
+            aimd_constraint_value *= b
+        elif (
+            aimd_constraint_value_mbytes()-throughput <
+            additive_throughput_diff
+        ):
+            aimd_constraint_value += a
+
+        train_data.append(
+            (aimd_constraint_value_mbytes(), rate)
+        )
+        params_history.append(
+            (t, aimd_constraint_value_mbytes(), throughput)
+        )
+
+    def modeled_value(messageset, t):
+        return {t: value for t, value, _ in params_history}[t]
+
+    aimd_constraint_violations.compute_value = compute_value
+    aimd_constraint_violations.update_model = update_model
+    aimd_constraint_violations.model_params_history = params_history
+    aimd_constraint_violations.train_data = train_data
+    aimd_constraint_violations.modeled_value = modeled_value
+
+    return aimd_constraint_violations

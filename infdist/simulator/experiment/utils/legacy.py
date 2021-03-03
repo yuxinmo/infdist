@@ -36,15 +36,14 @@ def get_results_filename(
     )
 
 
-PUBLICATION_DATA_DIR = \
-    "/tmp/data"
-
-
 def run_legacy_experiment(
     experiment_cls,
     experiments_type,
     results_dir="/tmp",
+    pub_results_dir=None,
 ):
+    if pub_results_dir is None:
+        pub_results_dir = results_dir + '/pub'
     if experiments_type == 'very_small':
         agents_num = 6
         t_end = 10
@@ -58,8 +57,9 @@ def run_legacy_experiment(
         t_end = 10
         MSGSETS = [msgset_presets[5]]
     elif experiments_type == 'varying background traffic small':
-        agents_num = 8
-        t_end = 30
+        # the name is misleading
+        agents_num = 16
+        t_end = 100
         MSGSETS = [msgset_presets[6]]
     elif experiments_type == 'varying background traffic':
         agents_num = 8
@@ -85,6 +85,6 @@ def run_legacy_experiment(
             f'{results_dir}/graphs/'
             f'{agents_num}_{t_end}_{msgset["ident"]}' + '_{}.pdf'
         )
-        # experiment.save_publication_graphs(
-        #     PUBLICATION_DATA_DIR
-        # )
+        experiment.save_publication_graphs(
+            f'{pub_results_dir}'
+        )

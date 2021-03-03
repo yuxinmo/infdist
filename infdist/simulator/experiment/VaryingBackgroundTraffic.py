@@ -11,11 +11,15 @@ DESCRIPTION = """
     varying background traffic.
 """
 
-PUBLICATION = None
+PUBLICATION = """
+    Information Distribution in Multi-Robot Systems:
+    Adapting to Varying Communication Conditions
+"""
 
 
 def run():
     run_legacy_experiment(
         VaryingBackgroundTrafficExperiment,
-        "varying background traffic"
+        "varying background traffic small",
+        pub_results_dir="/home/zeroos/uni/papers/2020-MBarcis-infdist_adaptation/data/"
     )
