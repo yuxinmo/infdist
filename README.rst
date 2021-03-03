@@ -50,7 +50,7 @@ Available experiments:
 
 DropRateVsUtility
 """""""""""""""""
-Published in: 
+To be published in: 
     Information Distribution in Multi-Robot Systems: 
     Generic, Utility-Aware Optimization Middleware
 
@@ -61,7 +61,7 @@ Description:
 
 GoodputVsRate
 """""""""""""
-Published in: 
+To be published in: 
     Information Distribution in Multi-Robot Systems:
     Adapting to Varying Communication Conditions
 
@@ -83,7 +83,7 @@ Description:
 
 LimitedThroughput
 """""""""""""""""
-Published in: 
+To be published in: 
     Information Distribution in Multi-Robot Systems:
     Adapting to Varying Communication Conditions
 
@@ -93,7 +93,7 @@ Description:
 
 VaryingBackgroundTraffic
 """"""""""""""""""""""""
-Published in: 
+To be published in: 
     Information Distribution in Multi-Robot Systems:
     Adapting to Varying Communication Conditions
 
