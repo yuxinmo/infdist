@@ -93,6 +93,11 @@ Description:
 
 VaryingBackgroundTraffic
 """"""""""""""""""""""""
+Published in: 
+    Information Distribution in Multi-Robot Systems:
+    Adapting to Varying Communication Conditions
+
+
 Description: 
     The experiment shows how the adaptive goodput constraint performs under
     varying background traffic.
