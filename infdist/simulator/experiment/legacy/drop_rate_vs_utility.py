@@ -191,6 +191,7 @@ class DropRateVsUtilityExperiment(BaseExperiment):
             self.get_cumulative_graph(),
             graphs['histogram_FixedRatioTrial'][0],
             graphs['cdf_FixedRatioTrial'][0],
+            skip_cumulative=False,
         )
         graphs['legend'] = self.extract_legend(
             self.get_cumulative_graph(),

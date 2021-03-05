@@ -21,6 +21,7 @@ class DynamicMessageTree:
         self.max_utility = None
         self.t_end = t_end
         self.debug = False
+        self.suppress_warnings = False
         self.constraints = constraints
         self.limit_history = 100
 
@@ -143,10 +144,11 @@ class DynamicMessageTree:
                 self.montecarlo.root_node = self.montecarlo.make_choice()
             choice = self.montecarlo.make_choice()
         except IndexError:
-            print(
-                "WARNING: the message to decide on is not in the tree! "
-                "Not enough simulations? Dropping message."
-            )
+            if not self.suppress_warnings:
+                print(
+                    "WARNING: the message to decide on is not in the tree! "
+                    "Not enough simulations? Dropping message."
+                )
             return False
 
         end_time = datetime.now()

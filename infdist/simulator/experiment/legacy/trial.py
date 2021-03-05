@@ -113,7 +113,7 @@ class Trial:
             "Received {:.0f}% of all messages, "
             "{:.0f}% of sent messages.").format(
             stats['sent_received_num']/stats['total_messages']*100,
-            stats['sent_received_num']/stats['sent_num']*100,
+            stats['sent_received_num']/(stats['sent_num'] or 1)*100,
         ))
         print("AVG data rate: {:.3f} Mbps with avg latency of {}".format(
             sum([m.size for m in stats['no_duplicates'].all()]) * 8 / 10**6
@@ -292,3 +292,9 @@ class TreeTrial(Trial):
                 (1-drop_rate)*(timeslot_length)*avg_msgs_per_second,
                 timeslot_length
         )
+
+    def set_simulations_num(self, value):
+        self.agent_kwargs['simulations_num'] = value
+
+    def set_suppress_warnings(self, value):
+        self.agent_kwargs['suppress_warnings'] = value

@@ -236,7 +236,7 @@ def generate_simple_3D_reconstruction(
             sender, receivers,
             f=msgset.get(
                 'f',
-                lambda _: np.random.normal(3, 0.1),
+                lambda _: np.random.normal(1, 0.1),
             )(sender),
             t_start=msgset.get(
                 't_start',

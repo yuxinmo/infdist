@@ -143,6 +143,7 @@ class BaseTreeAgent(ConstrainedAgent):
         self.agents = kwargs.pop('agents')
         self.simulations_num = kwargs.pop('simulations_num', 1500)
         limit_history = kwargs.pop('limit_history', 0)
+        suppress_warnings = kwargs.pop('suppress_warnings', False)
         super().__init__(*args, **kwargs)
 
         self.tree = DynamicMessageTree(
@@ -151,6 +152,7 @@ class BaseTreeAgent(ConstrainedAgent):
             self.constraints,
         )
         self.tree.limit_history = limit_history
+        self.tree.suppress_warnings = suppress_warnings
 
         self.active = True
 
