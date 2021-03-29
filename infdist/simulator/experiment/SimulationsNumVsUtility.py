@@ -1,11 +1,12 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
-from .legacy.trial import TreeTrial
-from optimization.missions import presets as msgset_presets
+import numpy as np
 import pickle
 import plotly.express as px
 import plotly.io as pio
+
+from .legacy.trial import TreeTrial
+from optimization.missions import presets as msgset_presets
 
 
 DESCRIPTION = """
@@ -13,26 +14,35 @@ DESCRIPTION = """
     and utility.
 """
 
-PUBLICATION = """
-    Information Distribution in Multi-Robot Systems:
-    Generic, Utility-Aware Optimization Middleware
-"""
+PUBLICATION = None
 
 TRIAL_CLS = TreeTrial
-AGENTS_NUM = 10
-T_END = 100
-MSGSETS = [msgset_presets[i] for i in range(3)]
+AGENTS_NUM = 30
+T_END = 10
+# MSGSETS = [msgset_presets[i] for i in range(3)]
+MSGSETS = [
+    {
+        'ident': 'X',
+        'max_depl_rate_mi': lambda: np.random.normal(0.2, 0.2),
+        'max_depl_rate': lambda mi: np.random.normal(mi, 0.1),
+        't_gen': lambda t: abs(np.random.normal(t, 0.1)),
+        'topic_weight': lambda i: 2**(i+1),
+        'message_size': lambda _: 2048,
+    },
+]
+
+
 RESULTS_FILE = '/tmp/SimNumVsUtility.pickle'
 GRAPH_FILE = '/tmp/SimNumVsUtility_{}.pdf'
 
 EXPERIMENT_SETUPS = [
     {
-        'id': sim_num,
+        'id': f'{msgset["ident"]}@{sim_num}',
         'simulations_num': sim_num,
         'msgset': msgset,
     }
     # for sim_num in range(0, 1001, 100)
-    for sim_num in range(0, 101, 20)
+    for sim_num in range(0, 301, 20)
     for msgset in MSGSETS
 ]
 
