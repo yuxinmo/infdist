@@ -1,4 +1,4 @@
--e git://github.com/zeroos/monte-carlo-tree-search.git#egg=imparaai-montecarlo
+-e https://github.com/zeroos/monte-carlo-tree-search.git#egg=imparaai-montecarlo
 graphviz
 sklearn
 pandas
